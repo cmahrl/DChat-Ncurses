@@ -693,7 +693,7 @@ init_gui(float ratio_height, float ratio_width)
     int o_base    = 2;          // base offset
     int h_base    = LINES - o_base;
     int w_base    = COLS;
-    int p_base    = 1;          // col/row padding
+    int p_base    = 2;          // col/row padding
     // dimension of message field within virtual base window
     _win_msg->h       = h_base * ratio_height - p_base;
     _win_msg->h_total = _win_msg->h * 16;
@@ -702,7 +702,7 @@ init_gui(float ratio_height, float ratio_width)
     // dimension of user field within virtual base window
     _win_usr->h       = _win_msg->h;
     _win_usr->h_total = _win_usr->h * 16;
-    _win_usr->w       = w_base * (1 - ratio_width);
+    _win_usr->w       = w_base * (1 - ratio_width) - p_base / 2;
     _win_usr->w_total = _win_usr->w;
     // dimension of input field within virtual base window
     _win_inp->h       = 1;
@@ -710,7 +710,7 @@ init_gui(float ratio_height, float ratio_width)
     _win_inp->w       = _win_msg->w;
     _win_inp->w_total = _win_inp->w;
     // position base
-    int x_base  = 0;
+    int x_base  = p_base / 2;
     int y_base  = o_base;
     // position message field
     _win_msg->x = x_base;
