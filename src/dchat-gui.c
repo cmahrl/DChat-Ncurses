@@ -73,11 +73,23 @@ stop_gui();
 
 
 void
-set_position(DWINDOW_T* win, int y);
+move_win(DWINDOW_T* win, int y, int x);
 
 
 void
-set_cursor(DWINDOW_T* win, int y);
+set_row_position(DWINDOW_T* win, int y);
+
+
+void
+set_row_cursor(DWINDOW_T* win, int y);
+
+
+void
+col_position(DWINDOW_T* win, int n);
+
+
+void
+col_cursor(DWINDOW_T* win, int n);
 
 
 void
@@ -186,7 +198,7 @@ main()
 {
     if (pthread_mutex_init(&_win_lock, NULL) != 0)
     {
-        exit(1); //FIXME use fatal()
+        exit(1);
     }
 
     // check for resize events
@@ -235,7 +247,7 @@ start_gui()
     keypad(stdscr, TRUE); // make use of special key (arrow, ...)
     init_colors();        // initialize available colors
     init_wins();          // initialize all available windows
-    init_gui(0.9, 0.8);   // calculate size / position and render gui
+    init_gui(0.95, 0.75); // calculate size / position and render gui
 }
 
 
@@ -251,25 +263,79 @@ stop_gui()
 
 
 void
-set_position(DWINDOW_T* win, int y)
+move_win(DWINDOW_T* win, int y, int x)
 {
-    if(y < 0)
-        y = 0;
-    win->y_count = y;
-    set_cursor(win, y - win->h);
+    wmove(win->win, y, x);
+    _win_cur = win;
 }
 
 
 void
-set_cursor(DWINDOW_T* win, int y)
+set_row_position(DWINDOW_T* win, int y)
 {
-
-    if(y < 0)
+    if (y < 0)
+    {
         y = 0;
-    if(y > win->y_count - win->h)
+    }
+
+    win->y_count = y;
+    set_row_cursor(win, y - win->h);
+}
+
+
+void
+set_row_cursor(DWINDOW_T* win, int y)
+{
+    if (y < 0)
+    {
+        y = 0;
+    }
+
+    if (y > win->y_count - win->h)
+    {
         y = win->y_count - win->h;
+    }
 
     win->y_cursor = y;
+}
+
+
+void
+col_position(DWINDOW_T* win, int n)
+{
+    int x_count_before = win->x_count;
+    win->x_count += n;
+
+    if (win->x_count > win->w -1)
+    {
+        win->x_count = win->w - 1;
+    }
+    else if (win->x_count < 0)
+    {
+        win->x_count = 0;
+    }
+
+    col_cursor(win, win->x_count - x_count_before);
+}
+
+
+void
+col_cursor(DWINDOW_T* win, int n)
+{
+    win->x_cursor += n;
+
+    if (win->x_cursor > win->x_count)
+    {
+        win->x_cursor = win->x_count;
+    }
+    else if (win->x_cursor > win->w -1)
+    {
+        win->x_cursor = win->w - 1;
+    }
+    else if (win->x_cursor < 0)
+    {
+        win->x_cursor = 0;
+    }
 }
 
 
@@ -305,7 +371,7 @@ print_line(DWINDOW_T* win, char* dt, char* nickname, char* msg)
     int ok  = OK;
     len = strlen(msg);
     // print formatted chat line
-    wmove(win->win, win->y_count, 0);
+    move_win(win, win->y_count, 0);
     ok += print_string(win, dt,        A_BOLD   | COLOR_PAIR(COLOR_DATE_TIME));
     ok += print_string(win, SEPARATOR, A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
     ok += print_string(win, nickname,  A_BOLD   | COLOR_PAIR(COLOR_NICKNAME));
@@ -339,21 +405,23 @@ append_text(DWINDOW_T* win, char* txt)
     dt = asctime(timeinfo);
     dt[strlen(dt) - 1] = '\0'; // remove \n
 
-    if (print_line(win, dt, ME, txt) != 0) // FIXME: use dchat_conf and pdu instead
+    if (print_line(win, dt, ME, txt) != 0)
     {
+        getyx(win->win, row_after, col_after);
         start = win->h;                   // start copying from the second page
         end   = win->y_count - start -
-                2; // end copying right before the line where the error occured
+                (row_after - win->y_count +
+                 1); // end copying right before the line where the error occured
         copywin(win->win, win->win, start, 0, 0, 0, end, win->w - 1, FALSE);
-        set_position(win, end); // adjust y-cursor position
+        set_row_position(win, end); // adjust y-cursor position
         print_line(win, dt, ME, txt);           // try to print line again
         getyx(win->win, row_after, col_after);  // adjust cursor position
-        set_position(win, row_after); // adjust y-cursor position
+        set_row_position(win, row_after); // adjust y-cursor position
     }
     else
     {
         getyx(win->win, row_after, col_after);
-        set_position(win, row_after); // adjust y-cursor position
+        set_row_position(win, row_after); // adjust y-cursor position
     }
 }
 
@@ -413,17 +481,17 @@ winscrl(DWINDOW_T* win, int n)
     {
         if (win->y_cursor > 0)
         {
-            set_cursor(win, win->y_cursor + n);
+            set_row_cursor(win, win->y_cursor + n);
         }
     }
     // down
     else if (n > 0)
     {
-        set_cursor(win, win->y_cursor + n);
+        set_row_cursor(win, win->y_cursor + n);
     }
 
     // position cursor at the top left corner
-    wmove(win->win, win->y_cursor, 0);
+    move_win(win, win->y_cursor, 0);
     refresh_pad(win);
 }
 
@@ -441,18 +509,18 @@ on_key_tab()
         // move to the first row of the current pad window
         if (_win_msg->y_count >= _win_msg->h)
         {
-            wmove(_win_cur->win, _win_cur->y_cursor, 0);
+            move_win(_win_cur, _win_cur->y_cursor, 0);
         }
         else
         {
-            wmove(_win_cur->win, 0, 0);
+            move_win(_win_cur, 0, 0);
         }
 
         refresh_pad(_win_cur);
     }
     else
     {
-        wmove(_win_cur->win, 0, _win_cur->x_cursor);
+        move_win(_win_cur, 0, _win_cur->x_cursor);
         wrefresh(_win_cur->win);
     }
 }
@@ -479,10 +547,10 @@ on_key_enter()
     // print value to message window
     append_text(_win_msg, input);
     free(input);
-    // reset input buffer counter
-    // reset input column counter
-    _win_inp->x_count  = 0;
-    _win_inp->x_cursor = 0;
+    // reset column cursor
+    //_win_inp->x_count  = 0;
+    //_win_inp->x_cursor = 0;
+    col_position(_win_inp, _win_inp->x_count * -1);
     // clear input window and refresh windows
     wclear(_win_inp->win);
     refresh_winall();
@@ -499,8 +567,9 @@ on_key_backspace()
         getyx(_win_inp->win, y_pos, x_pos);
         mvwdelch(_win_inp->win, y_pos, x_pos - 1);
         wrefresh(_win_inp->win);
-        _win_inp->x_cursor--;
-        _win_inp->x_count--;
+        //_win_inp->x_cursor--;
+        //_win_inp->x_count--;
+        col_position(_win_inp, -1);
     }
 }
 
@@ -553,9 +622,9 @@ on_key_left()
     if (_win_inp->x_cursor > 0)
     {
         getyx(_win_inp->win, y_pos, x_pos);
-        wmove(_win_inp->win, y_pos, x_pos - 1);
+        move_win(_win_inp, y_pos, x_pos - 1);
         wrefresh(_win_inp->win);
-        _win_inp->x_cursor--;
+        col_cursor(_win_inp, -1);
     }
 }
 
@@ -570,9 +639,9 @@ on_key_right()
 
     if (x_pos < _win_inp->x_count && x_pos < x_mpos - 1)
     {
-        wmove(_win_inp->win, y_pos, x_pos + 1);
+        move_win(_win_inp, y_pos, x_pos + 1);
         wrefresh(_win_inp->win);
-        _win_inp->x_cursor++;
+        col_cursor(_win_inp, 1);
     }
 }
 
@@ -585,19 +654,18 @@ on_key_ascii(int ch)
     // get max width
     getmaxyx(_win_inp->win, max_height, max_width);
 
-    if (_win_inp->x_count < max_width - 1 && ch >= 20 && ch <= 126)
+    if (_win_inp->x_count < _win_inp->w - 1 && ch >= 20 && ch <= 126)
     {
         // print character
         winsch(_win_inp->win, ch);
         // move 1 char right
         getyx(_win_inp->win, height, width);
-        //FIXME
-        _win_cur = _win_inp;
-        wmove(_win_inp->win, height, width + 1);
+        move_win(_win_inp, height, width + 1);
         wrefresh(_win_inp->win);
-        // increase buf counter
-        _win_inp->x_count++;
-        _win_inp->x_cursor++;
+        // increase column cursor
+        //_win_inp->x_count++;
+        //_win_inp->x_cursor++;
+        col_position(_win_inp, 1);
     }
 }
 
