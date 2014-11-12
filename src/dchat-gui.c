@@ -31,7 +31,8 @@ enum windows
 {
     WINDOW_MSG,
     WINDOW_USR,
-    WINDOW_INP
+    WINDOW_INP,
+    WINDOW_AMOUNT
 };
 
 
@@ -109,7 +110,7 @@ append_text(DWINDOW_T* win, char* txt);
 
 
 int
-current_window();
+current_win();
 
 
 DWINDOW_T*
@@ -427,7 +428,7 @@ append_text(DWINDOW_T* win, char* txt)
 
 
 int
-current_window()
+current_win()
 {
     if (_win_cur == _win_msg)
     {
@@ -500,9 +501,9 @@ void
 on_key_tab()
 {
     int cur_win, next_win, x, y;
-    next_win = (current_window() + 1) % 3;
+    next_win = (current_win() + 1) % WINDOW_AMOUNT;
     _win_cur = get_win(next_win);
-    cur_win = current_window();
+    cur_win = current_win();
 
     if (cur_win == WINDOW_MSG || cur_win == WINDOW_USR)
     {
@@ -548,9 +549,8 @@ on_key_enter()
     append_text(_win_msg, input);
     free(input);
     // reset column cursor
-    //_win_inp->x_count  = 0;
-    //_win_inp->x_cursor = 0;
     col_position(_win_inp, _win_inp->x_count * -1);
+    move_win(_win_inp, 0, 0);
     // clear input window and refresh windows
     wclear(_win_inp->win);
     refresh_winall();
@@ -577,7 +577,7 @@ on_key_backspace()
 void
 on_key_up()
 {
-    if (current_window() == WINDOW_MSG)
+    if (current_win() == WINDOW_MSG)
     {
         winscrl(_win_msg, 1);
     }
@@ -587,7 +587,7 @@ on_key_up()
 void
 on_page_up()
 {
-    if (current_window() == WINDOW_MSG)
+    if (current_win() == WINDOW_MSG)
     {
         winscrl(_win_msg, _win_msg->h);
     }
@@ -597,7 +597,7 @@ on_page_up()
 void
 on_key_down()
 {
-    if (current_window() == WINDOW_MSG)
+    if (current_win() == WINDOW_MSG)
     {
         winscrl(_win_msg, -1);
     }
@@ -607,7 +607,7 @@ on_key_down()
 void
 on_page_down()
 {
-    if (current_window() == WINDOW_MSG)
+    if (current_win() == WINDOW_MSG)
     {
         winscrl(_win_msg, _win_msg->h * -1);
     }
@@ -756,6 +756,7 @@ init_colors(void)
 }
 
 
+//FIXME
 void
 init_gui(float ratio_height, float ratio_width)
 {
