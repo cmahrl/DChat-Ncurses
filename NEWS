@@ -1,0 +1,6 @@
+                          DChat - Peer-To-Peer Chat over TOR 
+
+    2014-11-12:
+        A graphical user interface built on top of the ncurses lib-
+        rary has been added to DChat. Different GUI implementations
+        will follow!

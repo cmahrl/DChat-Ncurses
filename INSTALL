@@ -1,0 +1,55 @@
+                          DChat - Peer-To-Peer Chat over TOR 
+
+  BASIC INSTALLATION
+  ------------------
+
+    Follow the steps below to compile and install the ncurses GUI for DChat:
+
+     1. `cd` to the directory containing the source code and type `./configure`
+        to configure the DChat GUI for your system.  If you're using `csh` on
+        an old version of System V, you might need to type `sh ./configure` 
+        instead to prevent `csh` from trying to execute `configure` itself.
+         
+        If for whatever reason other options for configuration are required,
+        type `./configure --help` to display a list of configurable options
+        and their descriptions.
+     
+        Running `configure` takes some time.  While running, it prints some
+        messages telling which features it is checking for.
+     
+     2. Run `make`. This will build the dchat source code into an executable 
+        program (or programs) and may take a few minutes, depending on the
+        speed of the computer and the size of the package. 
+
+     3. Run `make install`. This will install the compiled binaries, the 
+        documentation and configuration in the appropriate directories.
+
+     4. You can remove the created object files from the build directory by 
+        typing `make clean`.  To also remove the files that `configure` 
+        created (so you can compile the GUI of DChat for a different kind of
+        computer), type `make distclean'.  
+
+
+  FIRST USAGE
+  -----------
+
+  Follow the steps below if you use the GUI for DChat the first time:
+
+     1. Start TOR by using the GUI or by running `tor` within the CLI. 
+
+     2. Run `dchat -s <ONIONID> -n <NICKNAME> -l <LOCALPORT>` or simply `dchat`
+        if an configuration file exists in order to boot the core as process. 
+        If you start the DChat core client you have to specify the generated 
+        onion-id and the  hidden port of this local hidden service. These
+        information can be placed in a configuration file (See: man dchat(3) for
+        more details)
+
+        DChat will listen on this hidden port and will wait for connections
+        from remote hosts. If someone connects, the specified onion-id will 
+        be sent to the newly connected host. 
+
+        Make sure you start DChat with the correct onion-id, otherwise chatting
+        with other users will not work as expected!
+
+     3. Establish a connection from the ncurses GUI to the DChat core by typing
+        `dchat-ncurses` within the CLI. 
