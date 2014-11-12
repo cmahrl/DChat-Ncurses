@@ -756,14 +756,13 @@ init_colors(void)
 }
 
 
-//FIXME
 void
 init_gui(float ratio_height, float ratio_width)
 {
     // dimension of virtual base window including padding
     int o_base    = 2;          // base offset
     int h_base    = LINES - o_base;
-    int w_base    = COLS;
+    int w_base    = COLS - 1;   // -1: remove scrollbar
     int p_base    = 2;          // col/row padding
     // dimension of message field within virtual base window
     _win_msg->h       = h_base * ratio_height - p_base;
@@ -773,7 +772,7 @@ init_gui(float ratio_height, float ratio_width)
     // dimension of user field within virtual base window
     _win_usr->h       = _win_msg->h;
     _win_usr->h_total = _win_usr->h * 16;
-    _win_usr->w       = w_base * (1 - ratio_width) - p_base / 2;
+    _win_usr->w       = w_base - _win_msg->w - p_base;
     _win_usr->w_total = _win_usr->w;
     // dimension of input field within virtual base window
     _win_inp->h       = 1;
@@ -787,7 +786,7 @@ init_gui(float ratio_height, float ratio_width)
     _win_msg->x = x_base;
     _win_msg->y = y_base;
     // position user field
-    _win_usr->x = _win_msg->x + _win_msg->w + p_base;
+    _win_usr->x = _win_msg->x + _win_msg->w + p_base / 2;
     _win_usr->y = _win_msg->y;
     // position input field
     _win_inp->x = x_base;
