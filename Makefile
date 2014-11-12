@@ -220,13 +220,13 @@ distuninstallcheck_listfiles = find . -type f -print
 am__distuninstallcheck_listfiles = $(distuninstallcheck_listfiles) \
   | sed 's|^\./|$(prefix)/|' | grep -v '$(infodir)/dir$$'
 distcleancheck_listfiles = find . -type f -print
-ACLOCAL = ${SHELL} /Users/christophmahrl/Documents/Projects/DChat-Ncurses/missing aclocal-1.14
+ACLOCAL = ${SHELL} /Users/andi/DChat-Ncurses/missing aclocal-1.14
 AMTAR = $${TAR-tar}
 AM_DEFAULT_VERBOSITY = 1
-AUTOCONF = ${SHELL} /Users/christophmahrl/Documents/Projects/DChat-Ncurses/missing autoconf
-AUTOHEADER = ${SHELL} /Users/christophmahrl/Documents/Projects/DChat-Ncurses/missing autoheader
-AUTOMAKE = ${SHELL} /Users/christophmahrl/Documents/Projects/DChat-Ncurses/missing automake-1.14
-AWK = gawk
+AUTOCONF = ${SHELL} /Users/andi/DChat-Ncurses/missing autoconf
+AUTOHEADER = ${SHELL} /Users/andi/DChat-Ncurses/missing autoheader
+AUTOMAKE = ${SHELL} /Users/andi/DChat-Ncurses/missing automake-1.14
+AWK = awk
 CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = --pedantic -Wall -std=c99
@@ -242,7 +242,7 @@ ECHO_T =
 EGREP = /usr/bin/grep -E
 EXEEXT = 
 GREP = /usr/bin/grep
-INSTALL = /opt/local/bin/ginstall -c
+INSTALL = /usr/bin/install -c
 INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
@@ -251,8 +251,8 @@ LDFLAGS =
 LIBOBJS = 
 LIBS = 
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /Users/christophmahrl/Documents/Projects/DChat-Ncurses/missing makeinfo
-MKDIR_P = /opt/local/bin/gmkdir -p
+MAKEINFO = ${SHELL} /Users/andi/DChat-Ncurses/missing makeinfo
+MKDIR_P = ./install-sh -c -d
 OBJEXT = o
 PACKAGE = dchat-gui
 PACKAGE_BUGREPORT = christoph.mahrl@gmail.com
@@ -266,10 +266,10 @@ SET_MAKE =
 SHELL = /bin/sh
 STRIP = 
 VERSION = 0.9
-abs_builddir = /Users/christophmahrl/Documents/Projects/DChat-Ncurses
-abs_srcdir = /Users/christophmahrl/Documents/Projects/DChat-Ncurses
-abs_top_builddir = /Users/christophmahrl/Documents/Projects/DChat-Ncurses
-abs_top_srcdir = /Users/christophmahrl/Documents/Projects/DChat-Ncurses
+abs_builddir = /Users/andi/DChat-Ncurses
+abs_srcdir = /Users/andi/DChat-Ncurses
+abs_top_builddir = /Users/andi/DChat-Ncurses
+abs_top_srcdir = /Users/andi/DChat-Ncurses
 ac_ct_CC = gcc
 am__include = include
 am__leading_dot = .
@@ -288,7 +288,7 @@ host_alias =
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /Users/christophmahrl/Documents/Projects/DChat-Ncurses/install-sh
+install_sh = ${SHELL} /Users/andi/DChat-Ncurses/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -809,6 +809,10 @@ uninstall-am: uninstall-docDATA
 	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am tags \
 	tags-am uninstall uninstall-am uninstall-docDATA
 
+
+.PHONY: changelog doxygen-run doxygen-doc $(DX_PS_GOAL) $(DX_PDF_GOAL)
+
+changelog: ; build/gitlog-to-changelog > ChangeLog;
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
