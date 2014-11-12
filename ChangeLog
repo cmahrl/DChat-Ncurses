@@ -1,5 +1,47 @@
 2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
 
+	Bugfix: Setting correct current window
+	Fixed a bug that caused an incorrect current window pointer when enter
+	key has been typed
+
+2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Cleanup: Added functions for cursor positioning
+	Added functions for row / column cursor positioning
+
+	Added function to move to certain windows
+
+2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Bugfix: Incorrect Current Window
+	Typing letters in another window caused a bug that did not set the
+	correct current window when switching back to the input window
+
+	Update: Window Layout
+	indented message window to the right by 1 column
+
+	Update: .gitignore
+
+	Update: .gitignore
+
+2014-11-12  Christoph  <is121018@users.noreply.github.com>
+
+	Delete Makefile
+
+2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Bugfix: Fixed cursor positioning
+	Fixed bug causing incorrect cursor positioning when scrolling the
+	message window using page up/down keys
+
+2014-11-12  Christoph  <is121018@users.noreply.github.com>
+
+	Delete config.log
+
+2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: ChangeLog
+
 	Update: TODO
 
 	Added: Page Up/Down Scrolling
