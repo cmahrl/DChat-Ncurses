@@ -3,8 +3,9 @@
   UNDONE
   ------
 
-  Change Mail Adress to fhstp
-  Input Bug: Up/Down key
+  * Change Mail Adress to fhstp
+  * Input Bug: Up/Down key
+  * Correct cursor positioning when scrolling
 
 
   DONE
