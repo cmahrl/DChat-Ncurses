@@ -73,6 +73,14 @@ stop_gui();
 
 
 void
+set_position(DWINDOW_T* win, int y);
+
+
+void
+set_cursor(DWINDOW_T* win, int y);
+
+
+void
 win_resize(int signum);
 
 
@@ -243,6 +251,29 @@ stop_gui()
 
 
 void
+set_position(DWINDOW_T* win, int y)
+{
+    if(y < 0)
+        y = 0;
+    win->y_count = y;
+    set_cursor(win, y - win->h);
+}
+
+
+void
+set_cursor(DWINDOW_T* win, int y)
+{
+
+    if(y < 0)
+        y = 0;
+    if(y > win->y_count - win->h)
+        y = win->y_count - win->h;
+
+    win->y_cursor = y;
+}
+
+
+void
 win_resize(int signum)
 {
     stop_gui();
@@ -314,18 +345,15 @@ append_text(DWINDOW_T* win, char* txt)
         end   = win->y_count - start -
                 2; // end copying right before the line where the error occured
         copywin(win->win, win->win, start, 0, 0, 0, end, win->w - 1, FALSE);
-        win->y_count  = end; // adjust cursor position
-        win->y_cursor = end;
+        set_position(win, end); // adjust y-cursor position
         print_line(win, dt, ME, txt);           // try to print line again
         getyx(win->win, row_after, col_after);  // adjust cursor position
-        win->y_count  = row_after;
-        win->y_cursor = row_after;
+        set_position(win, row_after); // adjust y-cursor position
     }
     else
     {
         getyx(win->win, row_after, col_after);
-        win->y_count  = row_after;
-        win->y_cursor = row_after;
+        set_position(win, row_after); // adjust y-cursor position
     }
 }
 
@@ -383,25 +411,15 @@ winscrl(DWINDOW_T* win, int n)
     // up
     if (n < 0)
     {
-        if (win->y_cursor - win->h > 0)
+        if (win->y_cursor > 0)
         {
-            win->y_cursor += n;
-
-            if (!win->y_cursor)
-            {
-                win->y_cursor = 0;
-            }
+            set_cursor(win, win->y_cursor + n);
         }
     }
     // down
     else if (n > 0)
     {
-        win->y_cursor +=n;
-
-        if (win->y_cursor > win->y_count)
-        {
-            win->y_cursor = win->y_count;
-        }
+        set_cursor(win, win->y_cursor + n);
     }
 
     // position cursor at the top left corner
@@ -423,7 +441,7 @@ on_key_tab()
         // move to the first row of the current pad window
         if (_win_msg->y_count >= _win_msg->h)
         {
-            wmove(_win_cur->win, _win_cur->y_cursor - _win_cur->h, 0);
+            wmove(_win_cur->win, _win_cur->y_cursor, 0);
         }
         else
         {
@@ -764,12 +782,10 @@ refresh_winall()
 void
 refresh_pad(DWINDOW_T* win)
 {
-    int base;
-
     // autoscroll
     if (win->y_count >= win->h)
     {
-        prefresh(win->win, win->y_cursor - win->h, 0, win->y, win->x,
+        prefresh(win->win, win->y_cursor, 0, win->y, win->x,
                  win->y + win->h - 1, win->x + win->w - 1);
     }
     else

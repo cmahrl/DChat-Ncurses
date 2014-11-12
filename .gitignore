@@ -10,3 +10,7 @@ stamp-h1
 autom4te.cache/
 Makefile
 src/dchat-gui
+
+*.log
+
+Makefile
