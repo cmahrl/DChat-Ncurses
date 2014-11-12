@@ -591,6 +591,8 @@ on_key_ascii(int ch)
         winsch(_win_inp->win, ch);
         // move 1 char right
         getyx(_win_inp->win, height, width);
+        //FIXME
+        _win_cur = _win_inp;
         wmove(_win_inp->win, height, width + 1);
         wrefresh(_win_inp->win);
         // increase buf counter
@@ -673,15 +675,15 @@ init_colors(void)
     {
         start_color();
         use_default_colors();
-        init_pair(COLOR_WINDOW_MESSAGE,   COLOR_BLACK,   COLOR_WHITE);
-        init_pair(COLOR_WINDOW_USER,      COLOR_BLACK,   COLOR_WHITE);
-        init_pair(COLOR_WINDOW_INPUT,     COLOR_BLACK,   COLOR_WHITE);
-        init_pair(COLOR_DATE_TIME,        COLOR_CYAN,    COLOR_WHITE);
-        init_pair(COLOR_NICKNAME,         COLOR_GREEN,   COLOR_WHITE);
-        init_pair(COLOR_CONTACT_NICKNAME, COLOR_CYAN,    COLOR_WHITE);
-        init_pair(COLOR_SEPARATOR,        COLOR_CYAN,    COLOR_WHITE);
-        init_pair(COLOR_MESSAGE,          COLOR_BLACK,   COLOR_WHITE);
-        init_pair(COLOR_STDSCR,           -1,            COLOR_BLACK);
+        init_pair(COLOR_WINDOW_MESSAGE,   COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_WINDOW_USER,      COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_WINDOW_INPUT,     COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_DATE_TIME,        COLOR_CYAN,    COLOR_BLACK);
+        init_pair(COLOR_NICKNAME,         COLOR_GREEN,   COLOR_BLACK);
+        init_pair(COLOR_CONTACT_NICKNAME, COLOR_CYAN,    COLOR_BLACK);
+        init_pair(COLOR_SEPARATOR,        COLOR_CYAN,    COLOR_BLACK);
+        init_pair(COLOR_MESSAGE,          COLOR_BLACK,   COLOR_BLACK);
+        init_pair(COLOR_STDSCR,           -1,            COLOR_YELLOW);
     }
 }
 
