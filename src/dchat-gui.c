@@ -117,7 +117,15 @@ on_key_up();
 
 
 void
+on_page_up();
+
+
+void
 on_key_down();
+
+
+void
+on_page_down();
 
 
 void
@@ -397,7 +405,7 @@ winscrl(DWINDOW_T* win, int n)
     }
 
     // position cursor at the top left corner
-    wmove(win->win, win->y_cursor - win->h, 0);
+    wmove(win->win, win->y_cursor, 0);
     refresh_pad(win);
 }
 
@@ -490,11 +498,31 @@ on_key_up()
 
 
 void
+on_page_up()
+{
+    if (current_window() == WINDOW_MSG)
+    {
+        winscrl(_win_msg, _win_msg->h);
+    }
+}
+
+
+void
 on_key_down()
 {
     if (current_window() == WINDOW_MSG)
     {
         winscrl(_win_msg, -1);
+    }
+}
+
+
+void
+on_page_down()
+{
+    if (current_window() == WINDOW_MSG)
+    {
+        winscrl(_win_msg, _win_msg->h * -1);
     }
 }
 
@@ -579,8 +607,16 @@ handle_keyboard_hit(int ch)
             on_key_up();
             break;
 
+        case KEY_PPAGE:
+            on_page_up();
+            break;
+
         case KEY_DOWN:
             on_key_down();
+            break;
+
+        case KEY_NPAGE:
+            on_page_down();
             break;
 
         case KEY_LEFT:
