@@ -1,0 +1,28 @@
+2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: TODO
+
+	Added: Page Up/Down Scrolling
+	Added the functionality to scroll the message window page wise by using
+	page up / down key
+
+2014-11-12  Andreas Schmoll  <is121024@fhstp.ac.at>
+
+	Update TODO
+
+	Update Makefile
+	Added gitlog-to-changelog
+
+2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Remove ignored files
+
+	Added: .gitignore
+
+	INITIAL COMMIT
+
+2014-11-12  Christoph  <is121018@users.noreply.github.com>
+
+	Update LICENSE
+
+	Initial commit
