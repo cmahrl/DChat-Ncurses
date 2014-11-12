@@ -259,7 +259,7 @@ stop_gui()
     free_wins();
     endwin();
     refresh();
-    clear();
+    erase();
 }
 
 
@@ -552,7 +552,7 @@ on_key_enter()
     col_position(_win_inp, _win_inp->x_count * -1);
     move_win(_win_inp, 0, 0);
     // clear input window and refresh windows
-    wclear(_win_inp->win);
+    werase(_win_inp->win);
     refresh_winall();
 }
 
