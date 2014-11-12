@@ -1,5 +1,14 @@
 2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
 
+	Bugfix: Incorrect Window Layout
+	Fixed bug that caused an incorrect window layout when the
+	terminal has been resized
+
+	Bugfix: Fixed screen flickering
+	Replaced calls to function clear() with erase()
+
+	Update: ChangeLog
+
 	Bugfix: Setting correct current window
 	Fixed a bug that caused an incorrect current window pointer when enter
 	key has been typed
