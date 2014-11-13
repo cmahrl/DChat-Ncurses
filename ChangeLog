@@ -1,4 +1,23 @@
+2014-11-13  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: print_line, append_message
+	added new functions to print lines for system, contacts and self
+
+	updated append_message to use these new functions
+
+2014-11-13  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Bugfix: Incorrect Cursor Position
+	Fixed several bugs that caused an incorrect cursor position when screen
+	has been updated
+
+	Renamed several functions
+
+	Added auto response bot
+
 2014-11-12  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: ChangeLog
 
 	Bugfix: Incorrect Window Layout
 	Fixed bug that caused an incorrect window layout when the

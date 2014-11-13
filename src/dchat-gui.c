@@ -1,3 +1,23 @@
+/*
+ *  Copyright (c) 2014 Christoph Mahrl
+ *
+ *  This file is part of DChat.
+ *
+ *  DChat is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  DChat is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with DChat.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -7,256 +27,32 @@
 #include <time.h>
 #include <signal.h>
 #include <pthread.h>
-//DEL#include <unistd.h>
 
+#include "dchat-gui.h"
 
-#define SELF      "CRISM"
-//DEL#define BOT       "BOT"
-#define PROMPT    "$\n"
-#define SEPARATOR " - "
 
-
-typedef struct DWINDOW
-{
-    WINDOW* win;
-    int y;
-    int x;
-    int w_total;
-    int w;
-    int h_total;
-    int h;
-    int y_cursor;
-    int x_cursor;
-    int y_count;
-    int x_count;
-} DWINDOW_T;
-
-
-enum msgtype
-{
-    MSGTYPE_SELF,
-    MSGTYPE_CONTACT,
-    MSGTYPE_SYSTEM
-};
-
-
-enum windows
-{
-    WINDOW_MSG,
-    WINDOW_USR,
-    WINDOW_INP,
-    WINDOW_AMOUNT
-};
-
-
-enum colors
-{
-    COLOR_WINDOW_MESSAGE = 1,
-    COLOR_WINDOW_USER,
-    COLOR_WINDOW_INPUT,
-    COLOR_DATE_TIME,
-    COLOR_SEPARATOR,
-    COLOR_NICKNAME_SELF,
-    COLOR_NICKNAME_CONTACT,
-    COLOR_NICKNAME_SYSTEM,
-    COLOR_MESSAGE_SELF,
-    COLOR_MESSAGE_CONTACT,
-    COLOR_MESSAGE_SYSTEM,
-    COLOR_STDSCR,
-};
-
-
-static pthread_mutex_t _win_lock;
-static DWINDOW_T* _win_msg;
-static DWINDOW_T* _win_usr;
-static DWINDOW_T* _win_inp;
-static DWINDOW_T* _win_cur;
-
-
-void
-init_wins();
-
-
-void
-free_wins();
-
-
-void
-start_gui();
-
-
-void
-stop_gui();
-
-
-void
-move_win(DWINDOW_T* win, int y, int x);
-
-
-void
-set_row_position(DWINDOW_T* win, int y);
-
-
-void
-set_row_cursor(DWINDOW_T* win, int y);
-
-
-void
-col_position(DWINDOW_T* win, int n);
-
-
-void
-col_cursor(DWINDOW_T* win, int n);
-
-
-void
-win_resize(int signum);
-
-
-int
-print_string(DWINDOW_T* win, char* str, chtype attr);
-
-
-int
-print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg, chtype msg_attr);
-
-
-int
-print_line_self(DWINDOW_T* win, char* nickname, char* msg);
-
-
-int
-print_line_contact(DWINDOW_T* win, char* nickname, char* msg);
-
-
-int
-print_line_system(DWINDOW_T* win, char* nickname, char* msg);
-
-
-void
-append_message(DWINDOW_T* win, char* nickname, char* msg, int type);
-
-
-int
-current_win();
-
-
-DWINDOW_T*
-get_win(int winnr);
-
-
-void
-winscrl(DWINDOW_T* win, int n);
-
-
-void
-on_key_tab();
-
-
-void
-on_key_enter();
-
-
-void
-on_key_backspace();
-
-
-void
-on_key_up();
-
-
-void
-on_page_up();
-
-
-void
-on_key_down();
-
-
-void
-on_page_down();
-
-
-void
-on_key_left();
-
-
-void
-on_key_right();
-
-
-void
-on_key_ascii(int ch);
-
-
-void
-handle_keyboard_input(int ch);
-
-
-void
-read_input();
-
-
-void
-init_colors(void);
-
-
-void
-init_gui(float ratio_height, float ratio_width);
-
-
-WINDOW*
-create_padwin(int max_height, int max_width, int height, int width, int starty,
-              int startx, const int col_bkgd);
-
-
-WINDOW*
-create_win(int height, int width, int starty, int startx, const int col_bkgd);
-
-
-void
-refresh_screen();
-
-
-void
-refresh_current();
-
-
-void
-refresh_padwin(DWINDOW_T* win);
-
-
-//DEL
-/*void
-auto_message(void* ptr)
-{
-    while (1)
-    {
-        pthread_mutex_lock(&_win_lock);
-        append_message(_win_msg, BOT, "Hello from autobot!", MSGTYPE_CONTACT);
-        refresh_screen();
-        pthread_mutex_unlock(&_win_lock);
-        sleep(2);
-    }
-}
-*/
+//*********************************
+//        GLOBAL VARIABLES
+//*********************************
+static pthread_mutex_t _win_lock; // mutex for signaling a window lock
+static DWINDOW_T* _win_msg;       // main chat window containing messages
+static DWINDOW_T* _win_usr;       // window containing active contacts
+static DWINDOW_T* _win_inp;       // window containing current user input
+static DWINDOW_T* _win_cur;       // pointer that holds the current selected window
 
 
 int
 main()
 {
-    //DELconst char* ptr;
-    //DELpthread_t thread1;
-
     if (pthread_mutex_init(&_win_lock, NULL) != 0)
     {
         exit(1);
     }
 
     // check for resize events
-    signal(SIGWINCH, win_resize);
+    signal(SIGWINCH, resize_win);
+    // start graphical user interface and wait for input
     start_gui();
-    //DELpthread_create( &thread1, NULL, (void*)&auto_message, (void*) ptr);
     read_input();
     stop_gui();
     pthread_mutex_destroy(&_win_lock);
@@ -264,6 +60,42 @@ main()
 }
 
 
+/** 
+ * Initialize colors available within this chat.
+ * This function initializes all available colors
+ * that are supported within this GUI. 
+ * @see enum colors
+ */
+void
+init_colors(void)
+{
+    // check terminal support for colors
+    if (has_colors())
+    {
+        start_color();
+        use_default_colors();
+        init_pair(COLOR_WINDOW_MESSAGE,   COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_WINDOW_USER,      COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_WINDOW_INPUT,     COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_DATE_TIME,        COLOR_CYAN,    COLOR_BLACK);
+        init_pair(COLOR_SEPARATOR,        COLOR_CYAN,    COLOR_BLACK);
+        init_pair(COLOR_NICKNAME_SELF,    COLOR_YELLOW,  COLOR_BLACK);
+        init_pair(COLOR_NICKNAME_CONTACT, COLOR_GREEN,   COLOR_BLACK);
+        init_pair(COLOR_NICKNAME_SYSTEM,  COLOR_RED,     COLOR_BLACK);
+        init_pair(COLOR_MESSAGE_SELF,     COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_MESSAGE_CONTACT,  COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_MESSAGE_SYSTEM,   COLOR_RED,     COLOR_BLACK);
+        init_pair(COLOR_STDSCR,           -1,            COLOR_YELLOW);
+    }
+}
+
+
+/** 
+ * Initialize windows available within this chat.
+ * This function initializes all available windows
+ * that are used within this GUI. 
+ * @see enum windows of dchat-gui.h
+ */
 void
 init_wins()
 {
@@ -277,18 +109,67 @@ init_wins()
 }
 
 
+/** 
+ * Initialize graphical user interface.
+ * This function initializes the chat GUI and renders
+ * it on the screen.
+ * @param ratio_height relative height of message window to available rows
+ * @param ratio_width  relative width of message window to available columns
+ */
 void
-free_wins()
+init_gui(float ratio_height, float ratio_width)
 {
-    delwin(_win_msg->win);
-    delwin(_win_usr->win);
-    delwin(_win_inp->win);
-    free(_win_msg);
-    free(_win_usr);
-    free(_win_inp);
+    // dimension of virtual base window including padding
+    int o_base    = 2;          // base offset
+    int h_base    = LINES - o_base;
+    int w_base    = COLS - 1;   // -1: remove scrollbar
+    int p_base    = 2;          // col/row padding
+    // dimension of message field within virtual base window
+    _win_msg->h       = h_base * ratio_height - p_base;
+    _win_msg->h_total = _win_msg->h * 16; // make virtual window 16 times the size
+    _win_msg->w       = w_base * ratio_width - p_base;
+    _win_msg->w_total = _win_msg->w;
+    // dimension of user field within virtual base window
+    _win_usr->h       = _win_msg->h;
+    _win_usr->h_total = _win_usr->h * 16; // make virtual window 16 times the size
+    _win_usr->w       = w_base - _win_msg->w - p_base;
+    _win_usr->w_total = _win_usr->w;
+    // dimension of input field within virtual base window
+    _win_inp->h       = 1;
+    _win_inp->h_total = _win_inp->h;
+    _win_inp->w       = _win_msg->w;
+    _win_inp->w_total = _win_inp->w;
+    // position base
+    int x_base  = p_base / 2;
+    int y_base  = o_base;
+    // position message field
+    _win_msg->x = x_base;
+    _win_msg->y = y_base;
+    // position user field
+    _win_usr->x = _win_msg->x + _win_msg->w + p_base / 2;
+    _win_usr->y = _win_msg->y;
+    // position input field
+    _win_inp->x = x_base;
+    _win_inp->y = _win_msg->y + _win_msg->h + p_base;
+    // set standard background
+    bkgd(COLOR_PAIR(COLOR_STDSCR));
+    refresh();
+    // draw windows
+    _win_msg->win = create_padwin(_win_msg->h_total, _win_msg->w_total, _win_msg->h,
+                                  _win_msg->w, _win_msg->y, _win_msg->x, COLOR_WINDOW_MESSAGE);
+    _win_usr->win = create_padwin(_win_usr->h_total, _win_usr->w_total, _win_usr->h,
+                                  _win_usr->w, _win_usr->y, _win_usr->x, COLOR_WINDOW_USER);
+    _win_inp->win = create_win(_win_inp->h, _win_inp->w, _win_inp->y, _win_inp->x,
+                               COLOR_WINDOW_INPUT);
+    _win_cur = _win_inp; // focused window
 }
 
 
+/** 
+ * Initializes ncurses and starts the GUI.
+ * This functions initializes ncurses with the required
+ * prerequisites and starts/renders the chat GUI afterwards.
+ */
 void
 start_gui()
 {
@@ -302,6 +183,26 @@ start_gui()
 }
 
 
+/** 
+ * Frees resources used by the available chat windows.
+ */
+void
+free_wins()
+{
+    delwin(_win_msg->win);
+    delwin(_win_usr->win);
+    delwin(_win_inp->win);
+    free(_win_msg);
+    free(_win_usr);
+    free(_win_inp);
+}
+
+
+/** 
+ * Frees all resources used by ncurses and the GUI.
+ * This function releases all resources and stops
+ * the GUI.
+ */
 void
 stop_gui()
 {
@@ -313,216 +214,131 @@ stop_gui()
 }
 
 
+/** 
+ * Creates a ncurses pad window.
+ * This function creates a pad window and renders it on the screen.
+ * @see newpad() of ncurses.h
+ * @param max_height maximum height of pad window
+ * @param max_width  maximum width of pad window
+ * @param height     height of pad window shown on the screen
+ * @param width      width of pad window shown on the screen
+ * @param starty     y position of pad window shown on the screen
+ * @param startx     x position of pad window shown on the screen
+ * @param col_bkgd   background color of pad window shown on the screen
+ * @return Pointer to ncurses window structure
+ */
+WINDOW*
+create_padwin(int max_height, int max_width, int height, int width, int starty,
+              int startx, const int col_bkgd)
+{
+    WINDOW* local_pad;
+    local_pad = newpad(max_height, max_width);
+
+    // check if terminal support colors
+    if (has_colors())
+    {
+        wbkgd(local_pad, COLOR_PAIR(col_bkgd));
+    }
+    
+    // render pad win
+    prefresh(local_pad, 0, 0, starty, startx, starty + height - 1,
+             startx + width - 1);
+    return local_pad;
+}
+
+
+/** 
+ * Creates a ncurses window.
+ * This function creates a window and renders it on the screen.
+ * @see newwin() of ncurses.h
+ * @param height     height of window shown on the screen
+ * @param width      width of window shown on the screen
+ * @param starty     y position of window shown on the screen
+ * @param startx     x position of window shown on the screen
+ * @param col_bkgd   background color of window shown on the screen
+ * @return Pointer to ncurses window structure
+ */
+WINDOW*
+create_win(int height, int width, int starty, int startx, const int col_bkgd)
+{
+    WINDOW* local_win;
+    int attr = 0;
+    local_win = newwin(height, width, starty, startx);
+
+    // check if terminal support colors
+    if (has_colors())
+    {
+        wbkgd(local_win, COLOR_PAIR(col_bkgd));
+    }
+    
+    // render win
+    wrefresh(local_win);
+    return local_win;
+}
+
+
+/** 
+ * Refreshes the contents of the given chat window.
+ * @param win pointer to a chat window structure containing the actual window.
+ * @see DWINDOW_T in dchat-gui.h
+ */
 void
-move_win(DWINDOW_T* win, int y, int x)
+refresh_padwin(DWINDOW_T* win)
 {
-    wmove(win->win, y, x);
-    _win_cur = win;
-}
-
-
-void
-set_row_position(DWINDOW_T* win, int y)
-{
-    if (y < 0)
+    // autoscroll pad win if cursor is increased
+    if (win->y_count >= win->h)
     {
-        y = 0;
-    }
-
-    win->y_count = y;
-    set_row_cursor(win, y - win->h);
-}
-
-
-void
-set_row_cursor(DWINDOW_T* win, int y)
-{
-    if (y < 0)
-    {
-        y = 0;
-    }
-    else if (y > win->y_count - win->h)
-    {
-        y = win->y_count - win->h;
-    }
-
-    win->y_cursor = y;
-}
-
-
-void
-col_position(DWINDOW_T* win, int n)
-{
-    int x_count_before = win->x_count;
-    win->x_count += n;
-
-    if (win->x_count > win->w -1)
-    {
-        win->x_count = win->w - 1;
-    }
-    else if (win->x_count < 0)
-    {
-        win->x_count = 0;
-    }
-
-    col_cursor(win, win->x_count - x_count_before);
-}
-
-
-void
-col_cursor(DWINDOW_T* win, int n)
-{
-    win->x_cursor += n;
-
-    if (win->x_cursor > win->x_count)
-    {
-        win->x_cursor = win->x_count;
-    }
-    else if (win->x_cursor > win->w -1)
-    {
-        win->x_cursor = win->w - 1;
-    }
-    else if (win->x_cursor < 0)
-    {
-        win->x_cursor = 0;
-    }
-}
-
-
-void
-win_resize(int signum)
-{
-    stop_gui();
-    start_gui();
-}
-
-
-int
-print_string(DWINDOW_T* win, char* str, chtype attr)
-{
-    int len;
-    wattron(win->win, attr);
-
-    if (ERR == wprintw(win->win, "%s", str))
-    {
-        return ERR;
-    }
-
-    wattroff(win->win, attr);
-    wrefresh(win->win);
-    return OK;
-}
-
-
-int
-print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg, chtype msg_attr)
-{
-    int len = 0;
-    int ok  = OK;
-    time_t now = time (0);
-    char dt[100];
-
-    strftime (dt, 100, "%d. %b %Y %H:%M", localtime (&now));
-
-    // print formatted chat line
-    wmove(win->win, win->y_count, 0);
-    ok += print_string(win, dt,        A_BOLD   | COLOR_PAIR(COLOR_DATE_TIME));
-    ok += print_string(win, SEPARATOR, A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
-    ok += print_string(win, "[",       nickname_attr);
-    ok += print_string(win, nickname,  nickname_attr);
-    ok += print_string(win, "]",       nickname_attr);
-    ok += print_string(win, SEPARATOR, A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
-    ok += print_string(win, PROMPT,    A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
-    ok += print_string(win, msg,       msg_attr);
-
-    // append newline if non is given
-    len = strlen(msg);
-    if (msg[len - 1] != '\n')
-    {
-        ok += print_string(win, "\n\n",  msg_attr);
+        prefresh(win->win, win->y_cursor, 0, win->y, win->x,
+                 win->y + win->h - 1, win->x + win->w - 1);
     }
     else
     {
-        ok += print_string(win, "\n",  msg_attr);
+        prefresh(win->win, 0, 0, win->y, win->x, win->y + win->h - 1,
+                 win->x + win->w - 1);
     }
-
-    return ok;
 }
 
 
-int
-print_line_self(DWINDOW_T* win, char* nickname, char* msg)
-{
-    return print_line(
-        win, 
-        nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_SELF),
-        msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_SELF));
-}
-
-
-int
-print_line_contact(DWINDOW_T* win, char* nickname, char* msg)
-{
-    return print_line(
-        win, 
-        nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_CONTACT),
-        msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_CONTACT));
-}
-
-
-int
-print_line_system(DWINDOW_T* win, char* nickname, char* msg)
-{
-    return print_line(
-        win, 
-        nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_SYSTEM),
-        msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_SYSTEM));
-}
-
-
+/** 
+ * Refreshes the contents of the current chat window.
+ */
 void
-append_message(DWINDOW_T* win, char* nickname, char* msg, int type)
+refresh_current()
 {
-    int ok = 0, page = 1;
-    int start, end;
-    int row_after, col_after;
-    
-    
-    do{
-        switch(type)
-        {
-            case MSGTYPE_SELF:
-                ok = print_line_self(win, nickname, msg);
-                break;
-            case MSGTYPE_CONTACT:
-                ok = print_line_contact(win, nickname, msg);
-                break;
-            case MSGTYPE_SYSTEM:
-                ok = print_line_system(win, nickname, msg);
-                break;
-            default:
-                ok = print_line_self(win, nickname, msg);
-        }
+    int cur_win = current_winnr();
 
-        if (ok == 0)
-        {
-            // adjust cursor position
-            getyx(win->win, row_after, col_after);
-            set_row_position(win, row_after);     
-            break;
-        }
-
-        start = win->h * page;        // start copying from the second page
-        end   = win->y_count - start; // end copying right before the line where the error occured
-        copywin(win->win, win->win, start, 0, 0, 0, end, win->w - 1, FALSE);
-        set_row_position(win, end);   // adjust cursor position
+    if (cur_win == WINDOW_MSG || cur_win == WINDOW_USR)
+    {
+        refresh_padwin(_win_cur);
     }
-    while(win->h * ++page < win->h_total);
+    else
+    {
+        wrefresh(_win_cur->win);
+    }
 }
 
 
+/** 
+ * Refreshes the contents of all available chat windows.
+ */
+void
+refresh_screen()
+{
+    refresh_padwin(_win_msg);
+    refresh_padwin(_win_usr);
+    wrefresh(_win_inp->win);
+    move_win(_win_cur, _win_cur->y_cursor, _win_cur->x_cursor);
+    refresh_current();
+}
+
+
+/** 
+ * Returns the number of the current active chat window.
+ * @return value of enum colors
+ * @see enum colors in dchat-gui.h
+ */
 int
-current_win()
+current_winnr()
 {
     if (_win_cur == _win_msg)
     {
@@ -543,6 +359,11 @@ current_win()
 }
 
 
+/** 
+ * Returns the currently active chat window.
+ * @return Pointer to the currently active chat window.
+ * @see enum windows in dchat-gui.h
+ */
 DWINDOW_T*
 get_win(int winnr)
 {
@@ -565,8 +386,31 @@ get_win(int winnr)
 }
 
 
+/** 
+ * Signal handler that handles resize events.
+ * This signal handler functions restart and
+ * rerenders the GUI if a terminal resize event has 
+ * been detected. 
+ * @param signum Signal number
+ */
 void
-winscrl(DWINDOW_T* win, int n)
+resize_win(int signum)
+{
+    stop_gui();
+    start_gui();
+}
+
+
+/** 
+ * Scroll a chat window up/downwards.
+ * This functions scrolls a chat window n rows
+ * up or downwards respectively. If n is positive
+ * the window will be scrolled upwards otherwise it
+ * will be scrolled down.
+ * @param n number of rows to scroll up/down
+ */
+void
+scroll_win(DWINDOW_T* win, int n)
 {
     // invert
     n *= -1;
@@ -591,166 +435,139 @@ winscrl(DWINDOW_T* win, int n)
 }
 
 
+/** 
+ * Moves to a certain position within a chat window.
+ * This functions moves to a position within a chat window
+ * and sets this window as current window.
+ * @param win Pointer to chat window structure
+ * @param y y position
+ * @param x x position
+ * @see DWINDOW_T of dchat-gui.h
+ */
 void
-on_key_tab()
+move_win(DWINDOW_T* win, int y, int x)
 {
-    int cur_win, next_win, x, y;
-    next_win = (current_win() + 1) % WINDOW_AMOUNT;
-    _win_cur = get_win(next_win);
-    cur_win = current_win();
-
-    if (_win_cur->y_count >= _win_cur->h)
-    {
-        move_win(_win_cur, _win_cur->y_cursor, _win_cur->x_cursor);
-    }
-    else
-    {
-        move_win(_win_cur, 0, _win_cur->x_cursor);
-    }
-
-    refresh_screen();
+    wmove(win->win, y, x);
+    _win_cur = win;
 }
 
 
+/** 
+ * Sets the current active row position of a chat window.
+ * @param win Pointer to chat window structure
+ * @param y New row position
+ */
 void
-on_key_enter()
+set_row_position(DWINDOW_T* win, int y)
 {
-    int height, width, len, cur_row;
-    char* input;
-    // get width of input window
-    getmaxyx(_win_inp->win, height, width);
-    // allocate memory for displayed input
-    input = malloc(width + 1);
-
-    if (input == NULL)
+    if (y < 0)
     {
-        exit(1);
+        y = 0;
+    }
+    else if (y > win->h_total)
+    {
+        y = win->h_total;
     }
 
-    // fetch value of buffer from input window
-    mvwinnstr(_win_inp->win, 0, 0, input, _win_inp->x_count);
-    input[width] = '\0';
-    // print value to message window
-    append_message(_win_msg, SELF, input, MSGTYPE_SELF);
-    free(input);
-    // reset column cursor
-    col_position(_win_inp, _win_inp->x_count * -1);
-    move_win(_win_inp, _win_inp->y_cursor, _win_inp->x_cursor);
-    // clear input window and refresh windows
-    werase(_win_inp->win);
-    refresh_screen();
+    win->y_count = y;
+    set_row_cursor(win, y - win->h);
 }
 
 
+/** 
+ * Sets the row cursor position of a chat window.
+ * @param win Pointer to chat window structure
+ * @param y New row cursor position
+ */
 void
-on_key_backspace()
+set_row_cursor(DWINDOW_T* win, int y)
 {
-    int y_pos, x_pos;
-
-    if (_win_inp->x_cursor > 0)
+    if (y < 0)
     {
-        getyx(_win_inp->win, y_pos, x_pos);
-        mvwdelch(_win_inp->win, y_pos, x_pos - 1);
-        wrefresh(_win_inp->win);
-        col_position(_win_inp, -1);
+        y = 0;
     }
+    else if (y > win->y_count - win->h)
+    {
+        y = win->y_count - win->h;
+    }
+
+    win->y_cursor = y;
 }
 
 
+/** 
+ * Increases/Decreases the current active column position of a chat window.
+ * @param win Pointer to chat window structure
+ * @param n Number of columns to add/subtract
+ */
 void
-on_key_up()
+col_position(DWINDOW_T* win, int n)
 {
-    if (current_win() == WINDOW_MSG)
+    int x_count_before = win->x_count;
+    win->x_count += n;
+
+    if (win->x_count > win->w -1)
     {
-        winscrl(_win_msg, 1);
+        win->x_count = win->w - 1;
     }
+    else if (win->x_count < 0)
+    {
+        win->x_count = 0;
+    }
+
+    // also set column cursor
+    col_cursor(win, win->x_count - x_count_before);
 }
 
 
+/** 
+ * Increases/Decreases the column cursor position of a chat window.
+ * @param win Pointer to chat window structure
+ * @param n Number of columns to add/subtract
+ */
 void
-on_page_up()
+col_cursor(DWINDOW_T* win, int n)
 {
-    if (current_win() == WINDOW_MSG)
+    win->x_cursor += n;
+
+    if (win->x_cursor > win->x_count)
     {
-        winscrl(_win_msg, _win_msg->h);
+        win->x_cursor = win->x_count;
     }
-}
-
-
-void
-on_key_down()
-{
-    if (current_win() == WINDOW_MSG)
+    else if (win->x_cursor > win->w -1)
     {
-        winscrl(_win_msg, -1);
+        win->x_cursor = win->w - 1;
     }
-}
-
-
-void
-on_page_down()
-{
-    if (current_win() == WINDOW_MSG)
+    else if (win->x_cursor < 0)
     {
-        winscrl(_win_msg, _win_msg->h * -1);
-    }
-}
-
-
-void
-on_key_left()
-{
-    int y_pos, x_pos;
-
-    if (_win_inp->x_cursor > 0)
-    {
-        getyx(_win_inp->win, y_pos, x_pos);
-        move_win(_win_inp, y_pos, x_pos - 1);
-        wrefresh(_win_inp->win);
-        col_cursor(_win_inp, -1);
+        win->x_cursor = 0;
     }
 }
 
 
+/** 
+ * Reads keyboard hits until function key F1 has been typed.
+ */
 void
-on_key_right()
+read_input()
 {
-    int y_pos, x_pos;
-    int y_mpos, x_mpos;
-    getyx(_win_inp->win, y_pos, x_pos);
-    getmaxyx(_win_inp->win, y_mpos, x_mpos);
+    int ch;
 
-    if (x_pos < _win_inp->x_count && x_pos < x_mpos - 1)
+    while ((ch = getch()) != KEY_F(1))
     {
-        move_win(_win_inp, y_pos, x_pos + 1);
-        wrefresh(_win_inp->win);
-        col_cursor(_win_inp, 1);
+        pthread_mutex_lock(&_win_lock);
+        handle_keyboard_hit(ch);
+        pthread_mutex_unlock(&_win_lock);
     }
 }
 
 
-void
-on_key_ascii(int ch)
-{
-    int height = 0, width = 0;
-    int max_height = 0, max_width = 0;
-    // get max width
-    getmaxyx(_win_inp->win, max_height, max_width);
-
-    if (_win_inp->x_count < _win_inp->w - 1 && ch >= 20 && ch <= 126)
-    {
-        // print character
-        winsch(_win_inp->win, ch);
-        // move 1 char right
-        getyx(_win_inp->win, height, width);
-        move_win(_win_inp, height, width + 1);
-        wrefresh(_win_inp->win);
-        // increase column cursor
-        col_position(_win_inp, 1);
-    }
-}
-
-
+/** 
+ * Handles a keyboard key hit.
+ * Checks what kind of keyboard key has been typed. This
+ * key will be handled appropriatly.
+ * @param ch keyboard key
+ */
 void
 handle_keyboard_hit(int ch)
 {
@@ -802,167 +619,389 @@ handle_keyboard_hit(int ch)
 }
 
 
+/** 
+ * Handles tab key hits.
+ */
 void
-read_input()
+on_key_tab()
 {
-    int ch;
+    int cur_win, next_win, x, y;
 
-    while ((ch = getch()) != KEY_F(1))
+    next_win = (current_winnr() + 1) % WINDOW_AMOUNT; // determine next window
+    _win_cur = get_win(next_win); // switch to next window
+    cur_win = current_winnr();
+
+    // move to new window
+    if (_win_cur->y_count >= _win_cur->h)
     {
-        pthread_mutex_lock(&_win_lock);
-        handle_keyboard_hit(ch);
-        pthread_mutex_unlock(&_win_lock);
-    }
-}
-
-
-void
-init_colors(void)
-{
-    // check terminal support for colors
-    if (has_colors())
-    {
-        start_color();
-        use_default_colors();
-        init_pair(COLOR_WINDOW_MESSAGE,   COLOR_WHITE,   COLOR_BLACK);
-        init_pair(COLOR_WINDOW_USER,      COLOR_WHITE,   COLOR_BLACK);
-        init_pair(COLOR_WINDOW_INPUT,     COLOR_WHITE,   COLOR_BLACK);
-        init_pair(COLOR_DATE_TIME,        COLOR_CYAN,    COLOR_BLACK);
-        init_pair(COLOR_SEPARATOR,        COLOR_CYAN,    COLOR_BLACK);
-        init_pair(COLOR_NICKNAME_SELF,    COLOR_YELLOW,  COLOR_BLACK);
-        init_pair(COLOR_NICKNAME_CONTACT, COLOR_GREEN,   COLOR_BLACK);
-        init_pair(COLOR_NICKNAME_SYSTEM,  COLOR_RED,     COLOR_BLACK);
-        init_pair(COLOR_MESSAGE_SELF,     COLOR_WHITE,   COLOR_BLACK);
-        init_pair(COLOR_MESSAGE_CONTACT,  COLOR_WHITE,   COLOR_BLACK);
-        init_pair(COLOR_MESSAGE_SYSTEM,   COLOR_RED,     COLOR_BLACK);
-        init_pair(COLOR_STDSCR,           -1,            COLOR_YELLOW);
-    }
-}
-
-
-void
-init_gui(float ratio_height, float ratio_width)
-{
-    // dimension of virtual base window including padding
-    int o_base    = 2;          // base offset
-    int h_base    = LINES - o_base;
-    int w_base    = COLS - 1;   // -1: remove scrollbar
-    int p_base    = 2;          // col/row padding
-    // dimension of message field within virtual base window
-    _win_msg->h       = h_base * ratio_height - p_base;
-    _win_msg->h_total = _win_msg->h * 16;
-    _win_msg->w       = w_base * ratio_width - p_base;
-    _win_msg->w_total = _win_msg->w;
-    // dimension of user field within virtual base window
-    _win_usr->h       = _win_msg->h;
-    _win_usr->h_total = _win_usr->h * 16;
-    _win_usr->w       = w_base - _win_msg->w - p_base;
-    _win_usr->w_total = _win_usr->w;
-    // dimension of input field within virtual base window
-    _win_inp->h       = 1;
-    _win_inp->h_total = _win_inp->h;
-    _win_inp->w       = _win_msg->w;
-    _win_inp->w_total = _win_inp->w;
-    // position base
-    int x_base  = p_base / 2;
-    int y_base  = o_base;
-    // position message field
-    _win_msg->x = x_base;
-    _win_msg->y = y_base;
-    // position user field
-    _win_usr->x = _win_msg->x + _win_msg->w + p_base / 2;
-    _win_usr->y = _win_msg->y;
-    // position input field
-    _win_inp->x = x_base;
-    _win_inp->y = _win_msg->y + _win_msg->h + p_base;
-    // set standard background
-    bkgd(COLOR_PAIR(COLOR_STDSCR));
-    refresh();
-    // draw windows
-    _win_msg->win = create_padwin(_win_msg->h_total, _win_msg->w_total, _win_msg->h,
-                                  _win_msg->w, _win_msg->y, _win_msg->x, COLOR_WINDOW_MESSAGE);
-    _win_usr->win = create_padwin(_win_usr->h_total, _win_usr->w_total, _win_usr->h,
-                                  _win_usr->w, _win_usr->y, _win_usr->x, COLOR_WINDOW_USER);
-    _win_inp->win = create_win(_win_inp->h, _win_inp->w, _win_inp->y, _win_inp->x,
-                               COLOR_WINDOW_INPUT);
-    _win_cur = _win_inp; // focused window
-}
-
-
-WINDOW*
-create_padwin(int max_height, int max_width, int height, int width, int starty,
-              int startx, const int col_bkgd)
-{
-    WINDOW* local_pad;
-    local_pad = newpad(max_height, max_width);
-
-    if (has_colors())
-    {
-        wbkgd(local_pad, COLOR_PAIR(col_bkgd));
-    }
-
-    prefresh(local_pad, 0, 0, starty, startx, starty + height - 1,
-             startx + width - 1);
-    return local_pad;
-}
-
-
-WINDOW*
-create_win(int height, int width, int starty, int startx, const int col_bkgd)
-{
-    WINDOW* local_win;
-    int attr = 0;
-    local_win = newwin(height, width, starty, startx);
-
-    if (has_colors())
-    {
-        wbkgd(local_win, COLOR_PAIR(col_bkgd));
-    }
-
-    wrefresh(local_win);
-    return local_win;
-}
-
-
-void
-refresh_screen()
-{
-    refresh_padwin(_win_msg);
-    refresh_padwin(_win_usr);
-    wrefresh(_win_inp->win);
-    move_win(_win_cur, _win_cur->y_cursor, _win_cur->x_cursor);
-    refresh_current();
-}
-
-
-void
-refresh_current()
-{
-    int cur_win = current_win();
-
-    if (cur_win == WINDOW_MSG || cur_win == WINDOW_USR)
-    {
-        refresh_padwin(_win_cur);
+        move_win(_win_cur, _win_cur->y_cursor, _win_cur->x_cursor);
     }
     else
     {
-        wrefresh(_win_cur->win);
+        move_win(_win_cur, 0, _win_cur->x_cursor);
+    }
+
+    refresh_screen();
+}
+
+
+/** 
+ * Handles enter key hits.
+ */
+void
+on_key_enter()
+{
+    int height, width, len, cur_row;
+    char* input;
+    // get width of input window
+    getmaxyx(_win_inp->win, height, width);
+    // allocate memory for displayed input
+    input = malloc(width + 1);
+
+    if (input == NULL)
+    {
+        exit(1);
+    }
+
+    // fetch value of buffer from input window
+    mvwinnstr(_win_inp->win, 0, 0, input, _win_inp->x_count);
+    input[width] = '\0';
+    // print value to message window
+    append_message(_win_msg, SELF, input, MSGTYPE_SELF);
+    free(input);
+    // reset column cursor
+    col_position(_win_inp, _win_inp->x_count * -1);
+    move_win(_win_inp, _win_inp->y_cursor, _win_inp->x_cursor);
+    // clear input window and refresh windows
+    werase(_win_inp->win);
+    refresh_screen();
+}
+
+
+/** 
+ * Handles backspace key hits.
+ */
+void
+on_key_backspace()
+{
+    int y_pos, x_pos;
+    
+    // if cursor is not at the most left position
+    if (_win_inp->x_cursor > 0)
+    {
+        getyx(_win_inp->win, y_pos, x_pos);
+        mvwdelch(_win_inp->win, y_pos, x_pos - 1);
+        wrefresh(_win_inp->win);
+        col_position(_win_inp, -1);
     }
 }
 
 
+/** 
+ * Handles arrow up key hits.
+ */
 void
-refresh_padwin(DWINDOW_T* win)
+on_key_up()
 {
-    // autoscroll
-    if (win->y_count >= win->h)
+    if (current_winnr() == WINDOW_MSG)
     {
-        prefresh(win->win, win->y_cursor, 0, win->y, win->x,
-                 win->y + win->h - 1, win->x + win->w - 1);
+        // scroll window up 1 row
+        scroll_win(_win_msg, 1);
+    }
+}
+
+
+/** 
+ * Handles page up key hits.
+ */
+void
+on_page_up()
+{
+    if (current_winnr() == WINDOW_MSG)
+    {
+        // scroll window up 1 page
+        scroll_win(_win_msg, _win_msg->h);
+    }
+}
+
+
+/** 
+ * Handles arrow down key hits.
+ */
+void
+on_key_down()
+{
+    if (current_winnr() == WINDOW_MSG)
+    {
+        // move window down 1 row
+        scroll_win(_win_msg, -1);
+    }
+}
+
+
+/** 
+ * Handles page down key hits.
+ */
+void
+on_page_down()
+{
+    if (current_winnr() == WINDOW_MSG)
+    {
+        // move window down 1 page
+        scroll_win(_win_msg, _win_msg->h * -1);
+    }
+}
+
+
+/** 
+ * Handles arrow left key hits.
+ */
+void
+on_key_left()
+{
+    int y_pos, x_pos;
+
+    // if cursor is not at the most left position
+    if (_win_inp->x_cursor > 0)
+    {
+        getyx(_win_inp->win, y_pos, x_pos);
+        move_win(_win_inp, y_pos, x_pos - 1);
+        wrefresh(_win_inp->win);
+        col_cursor(_win_inp, -1);
+    }
+}
+
+
+/** 
+ * Handles arrow right key hits.
+ */
+void
+on_key_right()
+{
+    int y_pos, x_pos;
+    int y_mpos, x_mpos;
+    getyx(_win_inp->win, y_pos, x_pos);
+    getmaxyx(_win_inp->win, y_mpos, x_mpos);
+
+    if (x_pos < _win_inp->x_count && x_pos < x_mpos - 1)
+    {
+        move_win(_win_inp, y_pos, x_pos + 1);
+        wrefresh(_win_inp->win);
+        col_cursor(_win_inp, 1);
+    }
+}
+
+
+/** 
+ * Handles key hits that generate printable characters (ASCII).
+ */
+void
+on_key_ascii(int ch)
+{
+    int height = 0, width = 0;
+    int max_height = 0, max_width = 0;
+    // get max width
+    getmaxyx(_win_inp->win, max_height, max_width);
+
+    if (_win_inp->x_count < _win_inp->w - 1 && ch >= 20 && ch <= 126)
+    {
+        // print character
+        winsch(_win_inp->win, ch);
+        // move 1 char right
+        getyx(_win_inp->win, height, width);
+        move_win(_win_inp, height, width + 1);
+        wrefresh(_win_inp->win);
+        // increase column cursor
+        col_position(_win_inp, 1);
+    }
+}
+
+
+/** 
+ * Prints a string at the current cursor position in the given chat window.
+ * This function prints a given string in the given chat window with the
+ * specified attributes.
+ * @param win  Pointer to chat window structure
+ * @param str  String to print
+ * @param attr Ncurses attributes applied to string
+ * @return OK on success, ERR on failure
+ * @see ncurses.h
+ */
+int
+print_string(DWINDOW_T* win, char* str, chtype attr)
+{
+    int len;
+    wattron(win->win, attr);
+
+    if (ERR == wprintw(win->win, "%s", str))
+    {
+        return ERR;
+    }
+
+    wattroff(win->win, attr);
+    wrefresh(win->win);
+    return OK;
+}
+
+
+/** 
+ * Prints a line at the current cursor position in the given chat window.
+ * This function prints a given  message as chat line in the given chat window
+ * and uses the colors specified for user input. 
+ * @param win  Pointer to chat window structure
+ * @param nickname Nickname that will be print and that precedes the message.
+ * @param msg  Message to print
+ * @return OK on success, ERR on failure
+ * @see ncurses.h
+ */
+int
+print_line_self(DWINDOW_T* win, char* nickname, char* msg)
+{
+    return print_line(
+               win,
+               nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_SELF),
+               msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_SELF));
+}
+
+
+/** 
+ * Prints a line at the current cursor position in the given chat window.
+ * This function prints a given  message as chat line in the given chat window
+ * and uses the colors specified for received messages from contacts. 
+ * @param win  Pointer to chat window structure
+ * @param nickname Nickname that will be print and that precedes the message.
+ * @param msg  Message to print
+ * @return OK on success, ERR on failure
+ * @see ncurses.h
+ */
+int
+print_line_contact(DWINDOW_T* win, char* nickname, char* msg)
+{
+    return print_line(
+               win,
+               nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_CONTACT),
+               msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_CONTACT));
+}
+
+
+/** 
+ * Prints a line at the current cursor position in the given chat window.
+ * This function prints a given  message as chat line in the given chat window
+ * and uses the colors specified for received messages from the system. 
+ * @param win  Pointer to chat window structure
+ * @param nickname Nickname that will be print and that precedes the message.
+ * @param msg  Message to print
+ * @return OK on success, ERR on failure
+ * @see ncurses.h
+ */
+int
+print_line_system(DWINDOW_T* win, char* nickname, char* msg)
+{
+    return print_line(
+               win,
+               nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_SYSTEM),
+               msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_SYSTEM));
+}
+
+
+/** 
+ * Prints a line at the current cursor position in the given chat window.
+ * This function prints a given  message as chat line in the given chat window.
+ * Supported attributes can be manually defined for nickname and the message itself.
+ * @param win  Pointer to chat window structure
+ * @param nickname Nickname that will be print and that precedes the message.
+ * @param nickname_attr Ncurses attributes for nickname
+ * @param msg  Message to print
+ * @param msg_attr Ncurses attributes for message
+ * @return OK on success, ERR on failure
+ * @see ncurses.h
+ */
+int
+print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg,
+           chtype msg_attr)
+{
+    int len = 0;
+    int ok  = OK;
+    time_t now = time (0);
+    char dt[100];
+    strftime (dt, 100, "%d. %b %Y %H:%M ", localtime (&now));
+    // print formatted chat line
+    wmove(win->win, win->y_count, 0);
+    ok += print_string(win, dt,        A_BOLD   | COLOR_PAIR(COLOR_DATE_TIME));
+    //ok += print_string(win, SEPARATOR, A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
+    ok += print_string(win, "[",       nickname_attr);
+    ok += print_string(win, nickname,  nickname_attr);
+    ok += print_string(win, "]",       nickname_attr);
+    ok += print_string(win, PROMPT,    A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
+    ok += print_string(win, msg,       msg_attr);
+    // append newline if non is given
+    len = strlen(msg);
+
+    if (msg[len - 1] != '\n')
+    {
+        ok += print_string(win, "\n\n",  msg_attr);
     }
     else
     {
-        prefresh(win->win, 0, 0, win->y, win->x, win->y + win->h - 1,
-                 win->x + win->w - 1);
+        ok += print_string(win, "\n",  msg_attr);
     }
+
+    return ok;
+}
+
+
+/** 
+ * Appends a message to the given window.
+ * This functions appends a text to the given window using the given nickname
+ * and message. It uses the type parameter to determine the colors for the
+ * message. Furthermore the window will be autoscrolled using a history buffer
+ * (only works with ncurses pads).
+ * @param win  Pointer to chat window structure
+ * @param nickname Nickname that will be print and that precedes the message.
+ * @param msg  Message to print
+ * @param type Type of message (contact, self, system)
+ * @see enum msgtypes of dchat-gui.h
+ */
+void
+append_message(DWINDOW_T* win, char* nickname, char* msg, int type)
+{
+    int ok = 0, page = 1;
+    int start, end;
+    int row_after, col_after;
+
+    do
+    {
+        switch (type)
+        {
+            case MSGTYPE_SELF:
+                ok = print_line_self(win, nickname, msg);
+                break;
+
+            case MSGTYPE_CONTACT:
+                ok = print_line_contact(win, nickname, msg);
+                break;
+
+            case MSGTYPE_SYSTEM:
+                ok = print_line_system(win, nickname, msg);
+                break;
+
+            default:
+                ok = print_line_self(win, nickname, msg);
+        }
+
+        if (ok == 0)
+        {
+            // adjust cursor position
+            getyx(win->win, row_after, col_after);
+            set_row_position(win, row_after);
+            break;
+        }
+
+        start = win->h * page;        // start copying from the second page
+        end   = win->y_count -
+                start; // end copying right before the line where the error occured
+        copywin(win->win, win->win, start, 0, 0, 0, end, win->w - 1, FALSE);
+        set_row_position(win, end);   // adjust cursor position
+    }
+    while (win->h * ++page < win->h_total); // retry if deleted page is not enough
 }
