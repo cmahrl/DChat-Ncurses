@@ -6,12 +6,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <signal.h>
-////FIXME
 #include <pthread.h>
-#include <unistd.h>
+//DEL#include <unistd.h>
 
 
-#define ME        "[CRISM]"
+#define SELF      "CRISM"
+//DEL#define BOT       "BOT"
 #define PROMPT    "$\n"
 #define SEPARATOR " - "
 
@@ -32,6 +32,14 @@ typedef struct DWINDOW
 } DWINDOW_T;
 
 
+enum msgtype
+{
+    MSGTYPE_SELF,
+    MSGTYPE_CONTACT,
+    MSGTYPE_SYSTEM
+};
+
+
 enum windows
 {
     WINDOW_MSG,
@@ -47,10 +55,13 @@ enum colors
     COLOR_WINDOW_USER,
     COLOR_WINDOW_INPUT,
     COLOR_DATE_TIME,
-    COLOR_NICKNAME,
-    COLOR_CONTACT_NICKNAME,
     COLOR_SEPARATOR,
-    COLOR_MESSAGE,
+    COLOR_NICKNAME_SELF,
+    COLOR_NICKNAME_CONTACT,
+    COLOR_NICKNAME_SYSTEM,
+    COLOR_MESSAGE_SELF,
+    COLOR_MESSAGE_CONTACT,
+    COLOR_MESSAGE_SYSTEM,
     COLOR_STDSCR,
 };
 
@@ -107,11 +118,23 @@ print_string(DWINDOW_T* win, char* str, chtype attr);
 
 
 int
-print_line(DWINDOW_T* win, char* dt, char* nickname, char* msg);
+print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg, chtype msg_attr);
+
+
+int
+print_line_self(DWINDOW_T* win, char* nickname, char* msg);
+
+
+int
+print_line_contact(DWINDOW_T* win, char* nickname, char* msg);
+
+
+int
+print_line_system(DWINDOW_T* win, char* nickname, char* msg);
 
 
 void
-append_text(DWINDOW_T* win, char* txt);
+append_message(DWINDOW_T* win, char* nickname, char* msg, int type);
 
 
 int
@@ -203,25 +226,27 @@ void
 refresh_padwin(DWINDOW_T* win);
 
 
-void
+//DEL
+/*void
 auto_message(void* ptr)
 {
     while (1)
     {
         pthread_mutex_lock(&_win_lock);
-        append_text(_win_msg, "Hello from autobot!");
+        append_message(_win_msg, BOT, "Hello from autobot!", MSGTYPE_CONTACT);
         refresh_screen();
         pthread_mutex_unlock(&_win_lock);
         sleep(2);
     }
 }
+*/
 
 
 int
 main()
 {
-    const char* ptr;
-    pthread_t thread1;
+    //DELconst char* ptr;
+    //DELpthread_t thread1;
 
     if (pthread_mutex_init(&_win_lock, NULL) != 0)
     {
@@ -231,7 +256,7 @@ main()
     // check for resize events
     signal(SIGWINCH, win_resize);
     start_gui();
-    pthread_create( &thread1, NULL, (void*)&auto_message, (void*) ptr);
+    //DELpthread_create( &thread1, NULL, (void*)&auto_message, (void*) ptr);
     read_input();
     stop_gui();
     pthread_mutex_destroy(&_win_lock);
@@ -390,63 +415,109 @@ print_string(DWINDOW_T* win, char* str, chtype attr)
 
 
 int
-print_line(DWINDOW_T* win, char* dt, char* nickname, char* msg)
+print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg, chtype msg_attr)
 {
     int len = 0;
     int ok  = OK;
-    len = strlen(msg);
+    time_t now = time (0);
+    char dt[100];
+
+    strftime (dt, 100, "%d. %b %Y %H:%M", localtime (&now));
+
     // print formatted chat line
     wmove(win->win, win->y_count, 0);
     ok += print_string(win, dt,        A_BOLD   | COLOR_PAIR(COLOR_DATE_TIME));
     ok += print_string(win, SEPARATOR, A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
-    ok += print_string(win, nickname,  A_BOLD   | COLOR_PAIR(COLOR_NICKNAME));
+    ok += print_string(win, "[",       nickname_attr);
+    ok += print_string(win, nickname,  nickname_attr);
+    ok += print_string(win, "]",       nickname_attr);
+    ok += print_string(win, SEPARATOR, A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
     ok += print_string(win, PROMPT,    A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
-    ok += print_string(win, msg,       A_NORMAL | COLOR_PAIR(COLOR_WINDOW_MESSAGE));
+    ok += print_string(win, msg,       msg_attr);
 
     // append newline if non is given
+    len = strlen(msg);
     if (msg[len - 1] != '\n')
     {
-        ok += print_string(win, "\n\n",  A_NORMAL | COLOR_PAIR(COLOR_MESSAGE));
+        ok += print_string(win, "\n\n",  msg_attr);
     }
     else
     {
-        ok += print_string(win, "\n",  A_NORMAL | COLOR_PAIR(COLOR_MESSAGE));
+        ok += print_string(win, "\n",  msg_attr);
     }
 
     return ok;
 }
 
 
-void
-append_text(DWINDOW_T* win, char* txt)
+int
+print_line_self(DWINDOW_T* win, char* nickname, char* msg)
 {
+    return print_line(
+        win, 
+        nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_SELF),
+        msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_SELF));
+}
+
+
+int
+print_line_contact(DWINDOW_T* win, char* nickname, char* msg)
+{
+    return print_line(
+        win, 
+        nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_CONTACT),
+        msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_CONTACT));
+}
+
+
+int
+print_line_system(DWINDOW_T* win, char* nickname, char* msg)
+{
+    return print_line(
+        win, 
+        nickname, A_BOLD   | COLOR_PAIR(COLOR_NICKNAME_SYSTEM),
+        msg,      A_NORMAL | COLOR_PAIR(COLOR_MESSAGE_SYSTEM));
+}
+
+
+void
+append_message(DWINDOW_T* win, char* nickname, char* msg, int type)
+{
+    int ok = 0, page = 1;
     int start, end;
     int row_after, col_after;
-    time_t rawtime;
-    struct tm* timeinfo;
-    char* dt;
-    time(&rawtime);
-    timeinfo = localtime(&rawtime);
-    dt = asctime(timeinfo);
-    dt[strlen(dt) - 1] = '\0'; // remove \n
+    
+    
+    do{
+        switch(type)
+        {
+            case MSGTYPE_SELF:
+                ok = print_line_self(win, nickname, msg);
+                break;
+            case MSGTYPE_CONTACT:
+                ok = print_line_contact(win, nickname, msg);
+                break;
+            case MSGTYPE_SYSTEM:
+                ok = print_line_system(win, nickname, msg);
+                break;
+            default:
+                ok = print_line_self(win, nickname, msg);
+        }
 
-    if (print_line(win, dt, ME, txt) != 0)
-    {
-        getyx(win->win, row_after, col_after);
-        start = win->h;                // start copying from the second page
-        end   = win->y_count -
-                start;  // end copying right before the line where the error occured
+        if (ok == 0)
+        {
+            // adjust cursor position
+            getyx(win->win, row_after, col_after);
+            set_row_position(win, row_after);     
+            break;
+        }
+
+        start = win->h * page;        // start copying from the second page
+        end   = win->y_count - start; // end copying right before the line where the error occured
         copywin(win->win, win->win, start, 0, 0, 0, end, win->w - 1, FALSE);
-        set_row_position(win, end);    // adjust y-cursor position
-        print_line(win, dt, ME, txt);           // try to print line again
-        getyx(win->win, row_after, col_after);  // adjust cursor position
-        set_row_position(win, row_after); // adjust y-cursor position
+        set_row_position(win, end);   // adjust cursor position
     }
-    else
-    {
-        getyx(win->win, row_after, col_after);
-        set_row_position(win, row_after); // adjust y-cursor position
-    }
+    while(win->h * ++page < win->h_total);
 }
 
 
@@ -560,7 +631,7 @@ on_key_enter()
     mvwinnstr(_win_inp->win, 0, 0, input, _win_inp->x_count);
     input[width] = '\0';
     // print value to message window
-    append_text(_win_msg, input);
+    append_message(_win_msg, SELF, input, MSGTYPE_SELF);
     free(input);
     // reset column cursor
     col_position(_win_inp, _win_inp->x_count * -1);
@@ -757,10 +828,13 @@ init_colors(void)
         init_pair(COLOR_WINDOW_USER,      COLOR_WHITE,   COLOR_BLACK);
         init_pair(COLOR_WINDOW_INPUT,     COLOR_WHITE,   COLOR_BLACK);
         init_pair(COLOR_DATE_TIME,        COLOR_CYAN,    COLOR_BLACK);
-        init_pair(COLOR_NICKNAME,         COLOR_GREEN,   COLOR_BLACK);
-        init_pair(COLOR_CONTACT_NICKNAME, COLOR_CYAN,    COLOR_BLACK);
         init_pair(COLOR_SEPARATOR,        COLOR_CYAN,    COLOR_BLACK);
-        init_pair(COLOR_MESSAGE,          COLOR_BLACK,   COLOR_BLACK);
+        init_pair(COLOR_NICKNAME_SELF,    COLOR_YELLOW,  COLOR_BLACK);
+        init_pair(COLOR_NICKNAME_CONTACT, COLOR_GREEN,   COLOR_BLACK);
+        init_pair(COLOR_NICKNAME_SYSTEM,  COLOR_RED,     COLOR_BLACK);
+        init_pair(COLOR_MESSAGE_SELF,     COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_MESSAGE_CONTACT,  COLOR_WHITE,   COLOR_BLACK);
+        init_pair(COLOR_MESSAGE_SYSTEM,   COLOR_RED,     COLOR_BLACK);
         init_pair(COLOR_STDSCR,           -1,            COLOR_YELLOW);
     }
 }
