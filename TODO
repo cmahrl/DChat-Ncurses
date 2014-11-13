@@ -2,10 +2,10 @@
 
   UNDONE
   ------
-  * Input Bug: Up/Down key
-  * Correct cursor positioning when scrolling
-
+  * http://www.gnu.org/software/autoconf/manual/autoconf-2.65/html_node/Obsolete-config_002estatus-Use.html#index-CONFIG_005fFILES-1859 
 
   DONE
   ----
+  * Input Bug: Up/Down key
+  * Correct cursor positioning when scrolling
   * Change Mail Adress to fhstp
