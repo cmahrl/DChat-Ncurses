@@ -1,9 +1,14 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 #include <ncurses.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include <signal.h>
+////FIXME
 #include <pthread.h>
+#include <unistd.h>
 
 
 #define ME        "[CRISM]"
@@ -187,16 +192,37 @@ create_win(int height, int width, int starty, int startx, const int col_bkgd);
 
 
 void
-refresh_winall();
+refresh_screen();
 
 
 void
-refresh_pad(DWINDOW_T* win);
+refresh_current();
+
+
+void
+refresh_padwin(DWINDOW_T* win);
+
+
+void
+auto_message(void* ptr)
+{
+    while (1)
+    {
+        pthread_mutex_lock(&_win_lock);
+        append_text(_win_msg, "Hello from autobot!");
+        refresh_screen();
+        pthread_mutex_unlock(&_win_lock);
+        sleep(2);
+    }
+}
 
 
 int
 main()
 {
+    const char* ptr;
+    pthread_t thread1;
+
     if (pthread_mutex_init(&_win_lock, NULL) != 0)
     {
         exit(1);
@@ -204,11 +230,10 @@ main()
 
     // check for resize events
     signal(SIGWINCH, win_resize);
-    //pthread_mutex_lock(&_win_lock);
     start_gui();
+    pthread_create( &thread1, NULL, (void*)&auto_message, (void*) ptr);
     read_input();
     stop_gui();
-    //pthread_mutex_unlock(&_win_lock);
     pthread_mutex_destroy(&_win_lock);
     return 0;
 }
@@ -291,8 +316,7 @@ set_row_cursor(DWINDOW_T* win, int y)
     {
         y = 0;
     }
-
-    if (y > win->y_count - win->h)
+    else if (y > win->y_count - win->h)
     {
         y = win->y_count - win->h;
     }
@@ -372,7 +396,7 @@ print_line(DWINDOW_T* win, char* dt, char* nickname, char* msg)
     int ok  = OK;
     len = strlen(msg);
     // print formatted chat line
-    move_win(win, win->y_count, 0);
+    wmove(win->win, win->y_count, 0);
     ok += print_string(win, dt,        A_BOLD   | COLOR_PAIR(COLOR_DATE_TIME));
     ok += print_string(win, SEPARATOR, A_BOLD   | COLOR_PAIR(COLOR_SEPARATOR));
     ok += print_string(win, nickname,  A_BOLD   | COLOR_PAIR(COLOR_NICKNAME));
@@ -409,12 +433,11 @@ append_text(DWINDOW_T* win, char* txt)
     if (print_line(win, dt, ME, txt) != 0)
     {
         getyx(win->win, row_after, col_after);
-        start = win->h;                   // start copying from the second page
-        end   = win->y_count - start -
-                (row_after - win->y_count +
-                 1); // end copying right before the line where the error occured
+        start = win->h;                // start copying from the second page
+        end   = win->y_count -
+                start;  // end copying right before the line where the error occured
         copywin(win->win, win->win, start, 0, 0, 0, end, win->w - 1, FALSE);
-        set_row_position(win, end); // adjust y-cursor position
+        set_row_position(win, end);    // adjust y-cursor position
         print_line(win, dt, ME, txt);           // try to print line again
         getyx(win->win, row_after, col_after);  // adjust cursor position
         set_row_position(win, row_after); // adjust y-cursor position
@@ -491,9 +514,9 @@ winscrl(DWINDOW_T* win, int n)
         set_row_cursor(win, win->y_cursor + n);
     }
 
-    // position cursor at the top left corner
-    move_win(win, win->y_cursor, 0);
-    refresh_pad(win);
+    // move to current cursor position
+    move_win(win, win->y_cursor, win->x_cursor);
+    refresh_screen();
 }
 
 
@@ -505,25 +528,16 @@ on_key_tab()
     _win_cur = get_win(next_win);
     cur_win = current_win();
 
-    if (cur_win == WINDOW_MSG || cur_win == WINDOW_USR)
+    if (_win_cur->y_count >= _win_cur->h)
     {
-        // move to the first row of the current pad window
-        if (_win_msg->y_count >= _win_msg->h)
-        {
-            move_win(_win_cur, _win_cur->y_cursor, 0);
-        }
-        else
-        {
-            move_win(_win_cur, 0, 0);
-        }
-
-        refresh_pad(_win_cur);
+        move_win(_win_cur, _win_cur->y_cursor, _win_cur->x_cursor);
     }
     else
     {
         move_win(_win_cur, 0, _win_cur->x_cursor);
-        wrefresh(_win_cur->win);
     }
+
+    refresh_screen();
 }
 
 
@@ -550,10 +564,10 @@ on_key_enter()
     free(input);
     // reset column cursor
     col_position(_win_inp, _win_inp->x_count * -1);
-    move_win(_win_inp, 0, 0);
+    move_win(_win_inp, _win_inp->y_cursor, _win_inp->x_cursor);
     // clear input window and refresh windows
     werase(_win_inp->win);
-    refresh_winall();
+    refresh_screen();
 }
 
 
@@ -567,8 +581,6 @@ on_key_backspace()
         getyx(_win_inp->win, y_pos, x_pos);
         mvwdelch(_win_inp->win, y_pos, x_pos - 1);
         wrefresh(_win_inp->win);
-        //_win_inp->x_cursor--;
-        //_win_inp->x_count--;
         col_position(_win_inp, -1);
     }
 }
@@ -663,8 +675,6 @@ on_key_ascii(int ch)
         move_win(_win_inp, height, width + 1);
         wrefresh(_win_inp->win);
         // increase column cursor
-        //_win_inp->x_count++;
-        //_win_inp->x_cursor++;
         col_position(_win_inp, 1);
     }
 }
@@ -841,16 +851,34 @@ create_win(int height, int width, int starty, int startx, const int col_bkgd)
 
 
 void
-refresh_winall()
+refresh_screen()
 {
-    refresh_pad(_win_msg);
-    wrefresh(_win_usr->win);
+    refresh_padwin(_win_msg);
+    refresh_padwin(_win_usr);
     wrefresh(_win_inp->win);
+    move_win(_win_cur, _win_cur->y_cursor, _win_cur->x_cursor);
+    refresh_current();
 }
 
 
 void
-refresh_pad(DWINDOW_T* win)
+refresh_current()
+{
+    int cur_win = current_win();
+
+    if (cur_win == WINDOW_MSG || cur_win == WINDOW_USR)
+    {
+        refresh_padwin(_win_cur);
+    }
+    else
+    {
+        wrefresh(_win_cur->win);
+    }
+}
+
+
+void
+refresh_padwin(DWINDOW_T* win)
 {
     // autoscroll
     if (win->y_count >= win->h)
