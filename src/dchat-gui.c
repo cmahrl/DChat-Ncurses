@@ -38,7 +38,8 @@ static pthread_mutex_t _win_lock; // mutex for signaling a window lock
 static DWINDOW_T* _win_msg;       // main chat window containing messages
 static DWINDOW_T* _win_usr;       // window containing active contacts
 static DWINDOW_T* _win_inp;       // window containing current user input
-static DWINDOW_T* _win_cur;       // pointer that holds the current selected window
+static DWINDOW_T*
+_win_cur;       // pointer that holds the current selected window
 
 
 int
@@ -60,10 +61,10 @@ main()
 }
 
 
-/** 
+/**
  * Initialize colors available within this chat.
  * This function initializes all available colors
- * that are supported within this GUI. 
+ * that are supported within this GUI.
  * @see enum colors
  */
 void
@@ -90,10 +91,10 @@ init_colors(void)
 }
 
 
-/** 
+/**
  * Initialize windows available within this chat.
  * This function initializes all available windows
- * that are used within this GUI. 
+ * that are used within this GUI.
  * @see enum windows of dchat-gui.h
  */
 void
@@ -109,7 +110,7 @@ init_wins()
 }
 
 
-/** 
+/**
  * Initialize graphical user interface.
  * This function initializes the chat GUI and renders
  * it on the screen.
@@ -165,7 +166,7 @@ init_gui(float ratio_height, float ratio_width)
 }
 
 
-/** 
+/**
  * Initializes ncurses and starts the GUI.
  * This functions initializes ncurses with the required
  * prerequisites and starts/renders the chat GUI afterwards.
@@ -183,7 +184,7 @@ start_gui()
 }
 
 
-/** 
+/**
  * Frees resources used by the available chat windows.
  */
 void
@@ -198,7 +199,7 @@ free_wins()
 }
 
 
-/** 
+/**
  * Frees all resources used by ncurses and the GUI.
  * This function releases all resources and stops
  * the GUI.
@@ -214,7 +215,7 @@ stop_gui()
 }
 
 
-/** 
+/**
  * Creates a ncurses pad window.
  * This function creates a pad window and renders it on the screen.
  * @see newpad() of ncurses.h
@@ -239,7 +240,7 @@ create_padwin(int max_height, int max_width, int height, int width, int starty,
     {
         wbkgd(local_pad, COLOR_PAIR(col_bkgd));
     }
-    
+
     // render pad win
     prefresh(local_pad, 0, 0, starty, startx, starty + height - 1,
              startx + width - 1);
@@ -247,7 +248,7 @@ create_padwin(int max_height, int max_width, int height, int width, int starty,
 }
 
 
-/** 
+/**
  * Creates a ncurses window.
  * This function creates a window and renders it on the screen.
  * @see newwin() of ncurses.h
@@ -270,14 +271,14 @@ create_win(int height, int width, int starty, int startx, const int col_bkgd)
     {
         wbkgd(local_win, COLOR_PAIR(col_bkgd));
     }
-    
+
     // render win
     wrefresh(local_win);
     return local_win;
 }
 
 
-/** 
+/**
  * Refreshes the contents of the given chat window.
  * @param win pointer to a chat window structure containing the actual window.
  * @see DWINDOW_T in dchat-gui.h
@@ -299,7 +300,7 @@ refresh_padwin(DWINDOW_T* win)
 }
 
 
-/** 
+/**
  * Refreshes the contents of the current chat window.
  */
 void
@@ -318,7 +319,7 @@ refresh_current()
 }
 
 
-/** 
+/**
  * Refreshes the contents of all available chat windows.
  */
 void
@@ -332,7 +333,7 @@ refresh_screen()
 }
 
 
-/** 
+/**
  * Returns the number of the current active chat window.
  * @return value of enum colors
  * @see enum colors in dchat-gui.h
@@ -359,7 +360,7 @@ current_winnr()
 }
 
 
-/** 
+/**
  * Returns the currently active chat window.
  * @return Pointer to the currently active chat window.
  * @see enum windows in dchat-gui.h
@@ -386,11 +387,11 @@ get_win(int winnr)
 }
 
 
-/** 
+/**
  * Signal handler that handles resize events.
  * This signal handler functions restart and
- * rerenders the GUI if a terminal resize event has 
- * been detected. 
+ * rerenders the GUI if a terminal resize event has
+ * been detected.
  * @param signum Signal number
  */
 void
@@ -401,7 +402,7 @@ resize_win(int signum)
 }
 
 
-/** 
+/**
  * Scroll a chat window up/downwards.
  * This functions scrolls a chat window n rows
  * up or downwards respectively. If n is positive
@@ -435,7 +436,7 @@ scroll_win(DWINDOW_T* win, int n)
 }
 
 
-/** 
+/**
  * Moves to a certain position within a chat window.
  * This functions moves to a position within a chat window
  * and sets this window as current window.
@@ -452,7 +453,7 @@ move_win(DWINDOW_T* win, int y, int x)
 }
 
 
-/** 
+/**
  * Sets the current active row position of a chat window.
  * @param win Pointer to chat window structure
  * @param y New row position
@@ -474,7 +475,7 @@ set_row_position(DWINDOW_T* win, int y)
 }
 
 
-/** 
+/**
  * Sets the row cursor position of a chat window.
  * @param win Pointer to chat window structure
  * @param y New row cursor position
@@ -495,7 +496,7 @@ set_row_cursor(DWINDOW_T* win, int y)
 }
 
 
-/** 
+/**
  * Increases/Decreases the current active column position of a chat window.
  * @param win Pointer to chat window structure
  * @param n Number of columns to add/subtract
@@ -520,7 +521,7 @@ col_position(DWINDOW_T* win, int n)
 }
 
 
-/** 
+/**
  * Increases/Decreases the column cursor position of a chat window.
  * @param win Pointer to chat window structure
  * @param n Number of columns to add/subtract
@@ -545,7 +546,7 @@ col_cursor(DWINDOW_T* win, int n)
 }
 
 
-/** 
+/**
  * Reads keyboard hits until function key F1 has been typed.
  */
 void
@@ -562,7 +563,7 @@ read_input()
 }
 
 
-/** 
+/**
  * Handles a keyboard key hit.
  * Checks what kind of keyboard key has been typed. This
  * key will be handled appropriatly.
@@ -619,14 +620,13 @@ handle_keyboard_hit(int ch)
 }
 
 
-/** 
+/**
  * Handles tab key hits.
  */
 void
 on_key_tab()
 {
     int cur_win, next_win, x, y;
-
     next_win = (current_winnr() + 1) % WINDOW_AMOUNT; // determine next window
     _win_cur = get_win(next_win); // switch to next window
     cur_win = current_winnr();
@@ -645,7 +645,7 @@ on_key_tab()
 }
 
 
-/** 
+/**
  * Handles enter key hits.
  */
 void
@@ -678,14 +678,14 @@ on_key_enter()
 }
 
 
-/** 
+/**
  * Handles backspace key hits.
  */
 void
 on_key_backspace()
 {
     int y_pos, x_pos;
-    
+
     // if cursor is not at the most left position
     if (_win_inp->x_cursor > 0)
     {
@@ -697,7 +697,7 @@ on_key_backspace()
 }
 
 
-/** 
+/**
  * Handles arrow up key hits.
  */
 void
@@ -711,7 +711,7 @@ on_key_up()
 }
 
 
-/** 
+/**
  * Handles page up key hits.
  */
 void
@@ -725,7 +725,7 @@ on_page_up()
 }
 
 
-/** 
+/**
  * Handles arrow down key hits.
  */
 void
@@ -739,7 +739,7 @@ on_key_down()
 }
 
 
-/** 
+/**
  * Handles page down key hits.
  */
 void
@@ -753,7 +753,7 @@ on_page_down()
 }
 
 
-/** 
+/**
  * Handles arrow left key hits.
  */
 void
@@ -772,7 +772,7 @@ on_key_left()
 }
 
 
-/** 
+/**
  * Handles arrow right key hits.
  */
 void
@@ -792,7 +792,7 @@ on_key_right()
 }
 
 
-/** 
+/**
  * Handles key hits that generate printable characters (ASCII).
  */
 void
@@ -817,7 +817,7 @@ on_key_ascii(int ch)
 }
 
 
-/** 
+/**
  * Prints a string at the current cursor position in the given chat window.
  * This function prints a given string in the given chat window with the
  * specified attributes.
@@ -844,10 +844,10 @@ print_string(DWINDOW_T* win, char* str, chtype attr)
 }
 
 
-/** 
+/**
  * Prints a line at the current cursor position in the given chat window.
  * This function prints a given  message as chat line in the given chat window
- * and uses the colors specified for user input. 
+ * and uses the colors specified for user input.
  * @param win  Pointer to chat window structure
  * @param nickname Nickname that will be print and that precedes the message.
  * @param msg  Message to print
@@ -864,10 +864,10 @@ print_line_self(DWINDOW_T* win, char* nickname, char* msg)
 }
 
 
-/** 
+/**
  * Prints a line at the current cursor position in the given chat window.
  * This function prints a given  message as chat line in the given chat window
- * and uses the colors specified for received messages from contacts. 
+ * and uses the colors specified for received messages from contacts.
  * @param win  Pointer to chat window structure
  * @param nickname Nickname that will be print and that precedes the message.
  * @param msg  Message to print
@@ -884,10 +884,10 @@ print_line_contact(DWINDOW_T* win, char* nickname, char* msg)
 }
 
 
-/** 
+/**
  * Prints a line at the current cursor position in the given chat window.
  * This function prints a given  message as chat line in the given chat window
- * and uses the colors specified for received messages from the system. 
+ * and uses the colors specified for received messages from the system.
  * @param win  Pointer to chat window structure
  * @param nickname Nickname that will be print and that precedes the message.
  * @param msg  Message to print
@@ -904,7 +904,7 @@ print_line_system(DWINDOW_T* win, char* nickname, char* msg)
 }
 
 
-/** 
+/**
  * Prints a line at the current cursor position in the given chat window.
  * This function prints a given  message as chat line in the given chat window.
  * Supported attributes can be manually defined for nickname and the message itself.
@@ -950,7 +950,7 @@ print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg,
 }
 
 
-/** 
+/**
  * Appends a message to the given window.
  * This functions appends a text to the given window using the given nickname
  * and message. It uses the type parameter to determine the colors for the
