@@ -26,7 +26,7 @@
 //         CHAT SETTINGS
 //*********************************
 #define SELF      "CRISM"
-//DEL#define BOT       "BOT"
+#define SYSTEM    "SYSTEM"
 #define PROMPT    "$\n"
 #define SEPARATOR " - "
 
@@ -60,7 +60,7 @@ typedef struct DWINDOW
 
 /*!
  * Source of message.
- * This enum defines the possible sources of messages. 
+ * This enum defines the possible sources of messages.
  * A message can be retrieved from the system (log, warn, ...),
  * from a contact or the message was composed by the
  * user himself.
@@ -123,8 +123,10 @@ void stop_gui();
 //*********************************
 //        RENDER FUNCTIONS
 //*********************************
-WINDOW* create_padwin(int max_height, int max_width, int height, int width, int starty, int startx, const int col_bkgd);
-WINDOW* create_win(int height, int width, int starty, int startx, const int col_bkgd);
+WINDOW* create_padwin(int max_height, int max_width, int height, int width,
+                      int starty, int startx, const int col_bkgd);
+WINDOW* create_win(int height, int width, int starty, int startx,
+                   const int col_bkgd);
 void refresh_padwin(DWINDOW_T* win);
 void refresh_current();
 void refresh_screen();
@@ -168,8 +170,10 @@ int print_string(DWINDOW_T* win, char* str, chtype attr);
 int print_line_self(DWINDOW_T* win, char* nickname, char* msg);
 int print_line_contact(DWINDOW_T* win, char* nickname, char* msg);
 int print_line_system(DWINDOW_T* win, char* nickname, char* msg);
-int print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg, chtype msg_attr);
+int print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg,
+               chtype msg_attr);
 void append_message(DWINDOW_T* win, char* nickname, char* msg, int type);
+void append_message_sync(DWINDOW_T* win, char* nickname, char* msg, int type);
 
 
 #endif

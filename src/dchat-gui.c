@@ -27,33 +27,95 @@
 #include <time.h>
 #include <signal.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <errno.h>
 
 #include "dchat-gui.h"
+
+
+#define INP_SOCK_PATH "/tmp/dinp.sock"
+#define OUT_SOCK_PATH "/tmp/dout.sock"
+#define LOG_SOCK_PATH "/tmp/dlog.sock"
+
+
+typedef struct ipc
+{
+    char* inp_sock_path;
+    char* out_sock_path;
+    char* log_sock_path;
+    int   inp_sock;
+    int   out_sock;
+    int   log_sock;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    int reconnect;
+} ipc;
+
+
+int
+unix_connect(char* local_path);
+
+
+int
+init_ipc();
+
+
+void
+free_ipc();
+
+
+void
+signal_reconnect();
+
+
+void*
+handle_sock_inp(void* ptr);
+
+
+void*
+handle_sock_out(void* ptr);
+
+
+void*
+handle_sock_log(void* ptr);
+
+
+void*
+th_ipc_connector(void* ptr);
 
 
 //*********************************
 //        GLOBAL VARIABLES
 //*********************************
-static pthread_mutex_t _win_lock; // mutex for signaling a window lock
-static DWINDOW_T* _win_msg;       // main chat window containing messages
-static DWINDOW_T* _win_usr;       // window containing active contacts
-static DWINDOW_T* _win_inp;       // window containing current user input
+static pthread_mutex_t _win_lock; //!< mutex for signaling a window lock
+static DWINDOW_T* _win_msg;       //!< main chat window containing messages
+static DWINDOW_T* _win_usr;       //!< window containing active contacts
+static DWINDOW_T* _win_inp;       //!< window containing current user input
 static DWINDOW_T*
-_win_cur;       // pointer that holds the current selected window
+_win_cur;       //!< pointer that holds the current selected window
+static ipc
+_ipc;           //!< holds file descriptor information to communicate with another process via ipc
 
 
 int
 main()
 {
+    pthread_t th_ipc;
+
     if (pthread_mutex_init(&_win_lock, NULL) != 0)
     {
         exit(1);
     }
 
-    // check for resize events
-    signal(SIGWINCH, resize_win);
+    signal(SIGWINCH, resize_win); // check for resize events
+    signal(SIGPIPE,
+           SIG_IGN);     // prevent sigpipes if write() on broken pipes is used
     // start graphical user interface and wait for input
     start_gui();
+    pthread_create(&th_ipc, NULL, (void*) th_ipc_connector, NULL);
     read_input();
     stop_gui();
     pthread_mutex_destroy(&_win_lock);
@@ -668,6 +730,7 @@ on_key_enter()
     input[width] = '\0';
     // print value to message window
     append_message(_win_msg, SELF, input, MSGTYPE_SELF);
+    handle_sock_out(input); // write input to process via ipc
     free(input);
     // reset column cursor
     col_position(_win_inp, _win_inp->x_count * -1);
@@ -1004,4 +1067,298 @@ append_message(DWINDOW_T* win, char* nickname, char* msg, int type)
         set_row_position(win, end);   // adjust cursor position
     }
     while (win->h * ++page < win->h_total); // retry if deleted page is not enough
+
+    refresh_screen();
+}
+
+
+/**
+ * Appends a message to the given window (Thread-safe).
+ * This functions thread-safely appends a text to the given window using the given nickname
+ * and message. It uses the type parameter to determine the colors for the
+ * message. Furthermore the window will be autoscrolled using a history buffer
+ * (only works with ncurses pads).
+ * @param win  Pointer to chat window structure
+ * @param nickname Nickname that will be print and that precedes the message.
+ * @param msg  Message to print
+ * @param type Type of message (contact, self, system)
+ * @see enum msgtypes of dchat-gui.h
+ */
+void
+append_message_sync(DWINDOW_T* win, char* nickname, char* msg, int type)
+{
+    pthread_mutex_lock(&_win_lock);
+    append_message(win, nickname, msg, type);
+    pthread_mutex_unlock(&_win_lock);
+}
+
+
+/**
+ *  Read a line terminated with \\n from a file descriptor.
+ *  Reads a line from the given file descriptor until \\n is found.
+ *  @param fd   File descriptor to read from
+ *  @param line Double pointer used for dynamic memory allocation since
+ *              characters will be stored on the heap.
+ *  @return: length of bytes read, 0 on EOF, -1 on error
+ */
+int
+read_line(int fd, char** line)
+{
+    char* ptr;             // line pointer
+    char* alc_ptr = NULL;  // used for realloc
+    int len = 1;           // current length of string (at least 1 char)
+    int ret;               // return value
+    *line = NULL;
+
+    do
+    {
+        // allocate memory for new character
+        alc_ptr = realloc(*line, len + 1);
+
+        if (alc_ptr == NULL)
+        {
+            if (*line != NULL)
+            {
+                free(*line);
+            }
+
+            exit(1);
+        }
+
+        *line = alc_ptr;
+        ptr = *line + len - 1;
+        len++;
+    }
+    while ((ret = read(fd, ptr, 1)) > 0 && *ptr != '\n');
+
+    // on error or EOF of read
+    if (ret <= 0)
+    {
+        free(*line);
+        return ret;
+    }
+
+    // terminate string
+    *(ptr) = '\0';
+    return len - 1; // length of string excluding \0
+}
+
+
+int
+unix_connect(char* local_path)
+{
+    int fd;
+    char* error;
+    struct sockaddr_un unix_addr;
+    memset(&unix_addr, 0, sizeof(unix_addr));
+    unix_addr.sun_family = PF_LOCAL;
+    strcat(unix_addr.sun_path, local_path);
+
+    if ((fd = socket(PF_LOCAL, SOCK_STREAM, 0)) == -1)
+    {
+        return -1;
+    }
+
+    if (connect(fd, (struct sockaddr*) &unix_addr, sizeof(unix_addr)) == -1)
+    {
+        close(fd);
+        return -1;
+    }
+
+    return fd;
+}
+
+
+int
+init_ipc()
+{
+    memset(&_ipc, 0, sizeof(_ipc));
+
+    if (pthread_mutex_init(&_ipc.lock, NULL) != 0)
+    {
+        return -1;
+    }
+
+    if (pthread_cond_init(&_ipc.cond, NULL) != 0)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+
+void
+free_unix_socks()
+{
+    if (_ipc.inp_sock != 0)
+    {
+        close(_ipc.inp_sock);
+    }
+
+    if (_ipc.out_sock != 0)
+    {
+        close(_ipc.out_sock);
+    }
+
+    if (_ipc.log_sock != 0)
+    {
+        close(_ipc.log_sock);
+    }
+}
+
+
+void
+free_ipc()
+{
+    free_unix_socks();
+    pthread_mutex_destroy(&_ipc.lock);
+    pthread_cond_destroy(&_ipc.cond);
+}
+
+
+void
+signal_reconnect()
+{
+    pthread_mutex_lock(&_ipc.lock);
+    _ipc.reconnect = 1;
+    pthread_cond_signal(&_ipc.cond);
+    pthread_mutex_unlock(&_ipc.lock);
+}
+
+
+void*
+handle_sock_inp(void* ptr)
+{
+    char* line;     // line read from socket fd
+    char* nickname;
+    char* msg;
+    char* save_ptr; // used for strtok
+    char delim = ';';
+
+    while ( _ipc.inp_sock != 0 && read_line(_ipc.inp_sock, &line) > 0 )
+    {
+        // split line: line format -> nickname;message
+        if ((nickname = strtok_r(line, &delim, &save_ptr)) == NULL)
+        {
+            free(line);
+            continue;
+        }
+        else if ((msg = strtok_r(NULL, &delim, &save_ptr)) == NULL)
+        {
+            free(line);
+            continue;
+        }
+
+        append_message_sync(_win_msg, nickname, msg, MSGTYPE_CONTACT);
+        free(line);
+    }
+
+    append_message_sync(_win_msg, SYSTEM, "Input socket connection lost!",
+                        MSGTYPE_SYSTEM);
+    signal_reconnect();
+    pthread_exit(NULL);
+}
+
+
+void*
+handle_sock_out(void* ptr)
+{
+    int len;
+    len = strlen((char*)ptr);
+
+    if (_ipc.out_sock != 0 && write(_ipc.out_sock, ptr, len) == -1)
+    {
+        append_message(_win_msg, SYSTEM,
+                       "Output socket connection lost! Message could not be delivered!",
+                       MSGTYPE_SYSTEM);
+        signal_reconnect();
+    }
+
+    return NULL;
+}
+
+
+void*
+handle_sock_log(void* ptr)
+{
+    char* line;
+
+    while ( _ipc.log_sock != 0 && read_line(_ipc.log_sock, &line) > 0 )
+    {
+        append_message_sync(_win_msg, SYSTEM, line, MSGTYPE_SYSTEM);
+        free(line);
+    }
+
+    append_message_sync(_win_msg, SYSTEM, "Logging socket connection lost!",
+                        MSGTYPE_SYSTEM);
+    signal_reconnect();
+    pthread_exit(NULL);
+}
+
+
+void*
+th_ipc_connector(void* ptr)
+{
+    int ival = 5;
+    pthread_t th_inp, th_out, th_log;
+
+    if (init_ipc() == -1)
+    {
+        append_message_sync(_win_msg, SYSTEM, "Inter-Process-Communication failed!",
+                            MSGTYPE_SYSTEM);
+    }
+
+    while (1)
+    {
+        if ((_ipc.inp_sock = unix_connect(INP_SOCK_PATH)) == -1)
+        {
+            append_message_sync(_win_msg, SYSTEM, "Connection to input socket failed!",
+                                MSGTYPE_SYSTEM);
+            free_unix_socks();
+            sleep(ival);
+            continue;
+        }
+        else if ((_ipc.out_sock = unix_connect(OUT_SOCK_PATH)) == -1)
+        {
+            append_message_sync(_win_msg, SYSTEM, "Connection to output socket failed!",
+                                MSGTYPE_SYSTEM);
+            free_unix_socks();
+            sleep(ival);
+            continue;
+        }
+        else if ((_ipc.log_sock = unix_connect(LOG_SOCK_PATH)) == -1)
+        {
+            append_message_sync(_win_msg, SYSTEM, "Connection to logging socket failed!",
+                                MSGTYPE_SYSTEM);
+            free_unix_socks();
+            sleep(ival);
+            continue;
+        }
+
+        append_message_sync(_win_msg, SYSTEM, "Connection established!",
+                            MSGTYPE_SYSTEM);
+        // start all socket threads
+        pthread_create(&th_inp, NULL, (void*) handle_sock_inp, NULL);
+        pthread_create(&th_log, NULL, (void*) handle_sock_log, NULL);
+        pthread_mutex_lock(
+            &_ipc.lock); // lock ipc mutex to start socket threads and to wait for reconnect cond.
+
+        // check reconnect flag after wakeup if thread should reconnect to unix sockets
+        while (!_ipc.reconnect)
+        {
+            pthread_cond_wait(&_ipc.cond, &_ipc.lock);
+        }
+
+        pthread_mutex_unlock(&_ipc.lock);
+        append_message_sync(_win_msg, SYSTEM, "Reconnecting...", MSGTYPE_SYSTEM);
+        // wait for threads to finish
+        free_unix_socks();  // close all open sockets
+        pthread_join(th_inp, NULL);
+        pthread_join(th_log, NULL);
+        _ipc.reconnect = 0; // reset reconnect condition
+    }
+
+    free_ipc();
+    pthread_exit(NULL);
 }
