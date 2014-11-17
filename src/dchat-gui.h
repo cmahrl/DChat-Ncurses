@@ -30,10 +30,6 @@
 #define PROMPT    "$\n"
 #define SEPARATOR " - "
 
-#define INP_SOCK_PATH "/tmp/dinp.sock"
-#define OUT_SOCK_PATH "/tmp/dout.sock"
-#define LOG_SOCK_PATH "/tmp/dlog.sock"
-
 
 //*********************************
 //         STRUCTURES/ENUMS

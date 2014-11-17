@@ -2762,6 +2762,24 @@ fi
 ac_config_headers="$ac_config_headers config.h"
 
 
+PREFIX=`test "$prefix" = NONE && prefix=""; eval echo "${prefix}"`
+
+
+cat >>confdefs.h <<_ACEOF
+#define INP_SOCK_PATH "$PREFIX/var/run/dinp.sock"
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define OUT_SOCK_PATH "$PREFIX/var/run/dout.sock"
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define LOG_SOCK_PATH "$PREFIX/var/run/dlog.sock"
+_ACEOF
+
+
 # Checks for programs.
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'

@@ -68,6 +68,15 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #define HAVE_UNISTD_H 1
 
+/* Location of user interface input socket */
+#define INP_SOCK_PATH "/var/run/dinp.sock"
+
+/* Location of user interface logging socket */
+#define LOG_SOCK_PATH "/var/run/dlog.sock"
+
+/* Location of user interface output socket */
+#define OUT_SOCK_PATH "/var/run/dout.sock"
+
 /* Name of package */
 #define PACKAGE "dchat-gui"
 
