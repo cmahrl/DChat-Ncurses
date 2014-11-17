@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include "dchat-gui.h"
 
@@ -43,15 +44,15 @@
 
 typedef struct ipc
 {
-    char* inp_sock_path;
-    char* out_sock_path;
-    char* log_sock_path;
-    int   inp_sock;
-    int   out_sock;
-    int   log_sock;
-    pthread_mutex_t lock;
-    pthread_cond_t cond;
-    int reconnect;
+    char* inp_sock_path;  //!< Path to UI input unix socket
+    char* out_sock_path;  //!< Path to UI output unix socket
+    char* log_sock_path;  //!< Path to UI logging unix socket
+    int   inp_sock;       //!< File descriptor of input unix socket
+    int   out_sock;       //!< File descriptor of output unix socket
+    int   log_sock;       //!< File descriptor of logging unix socket
+    pthread_mutex_t lock; //!< Mutex for reconnecting the ipc thread
+    pthread_cond_t cond;  //!< Condition for reconnect
+    int reconnect;        //!< Value of reconnect condition: 1 = reconnect
 } ipc;
 
 
@@ -727,9 +728,10 @@ on_key_enter()
 
     // fetch value of buffer from input window
     mvwinnstr(_win_inp->win, 0, 0, input, _win_inp->x_count);
-    input[width] = '\0';
+    input[_win_inp->x_count]     = '\n'; // append newline
+    input[_win_inp->x_count + 1] = '\0';
     // print value to message window
-    append_message(_win_msg, SELF, input, MSGTYPE_SELF);
+    append_message(_win_msg, SELF, MSGTYPE_SELF, input);
     handle_sock_out(input); // write input to process via ipc
     free(input);
     // reset column cursor
@@ -1021,16 +1023,34 @@ print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg,
  * (only works with ncurses pads).
  * @param win  Pointer to chat window structure
  * @param nickname Nickname that will be print and that precedes the message.
- * @param msg  Message to print
  * @param type Type of message (contact, self, system)
+ * @param fmt Format string of message
+ * @param args Argument of format string
  * @see enum msgtypes of dchat-gui.h
  */
 void
-append_message(DWINDOW_T* win, char* nickname, char* msg, int type)
+vappend_message(DWINDOW_T* win, char* nickname, int type, char* fmt,
+                va_list args)
 {
     int ok = 0, page = 1;
     int start, end;
     int row_after, col_after;
+    va_list copy;
+    size_t  len;
+    char*   msg;
+    // copy format string arguments
+    va_copy(copy, args);
+    len = vsnprintf(0, 0, fmt, copy); // determine length of formatted string
+    va_end(copy);
+
+    if ((msg = malloc(len + 1)) != 0)
+    {
+        vsnprintf(msg, len+1, fmt, args);
+    }
+    else
+    {
+        exit(1);
+    }
 
     do
     {
@@ -1073,6 +1093,29 @@ append_message(DWINDOW_T* win, char* nickname, char* msg, int type)
 
 
 /**
+ * Appends a message to the given window.
+ * This functions appends a text to the given window using the given nickname
+ * and message. It uses the type parameter to determine the colors for the
+ * message. Furthermore the window will be autoscrolled using a history buffer
+ * (only works with ncurses pads).
+ * @param win  Pointer to chat window structure
+ * @param nickname Nickname that will be print and that precedes the message.
+ * @param type Type of message (contact, self, system)
+ * @param fmt Format string of message
+ * @param ... variable argumens
+ * @see enum msgtypes of dchat-gui.h
+ */
+void
+append_message(DWINDOW_T* win, char* nickname, int type, char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    vappend_message(win, nickname, type, fmt, args);
+    va_end(args);
+}
+
+
+/**
  * Appends a message to the given window (Thread-safe).
  * This functions thread-safely appends a text to the given window using the given nickname
  * and message. It uses the type parameter to determine the colors for the
@@ -1080,15 +1123,19 @@ append_message(DWINDOW_T* win, char* nickname, char* msg, int type)
  * (only works with ncurses pads).
  * @param win  Pointer to chat window structure
  * @param nickname Nickname that will be print and that precedes the message.
- * @param msg  Message to print
  * @param type Type of message (contact, self, system)
+ * @param fmt Format string of message
+ * @param ... variable argumens
  * @see enum msgtypes of dchat-gui.h
  */
 void
-append_message_sync(DWINDOW_T* win, char* nickname, char* msg, int type)
+append_message_sync(DWINDOW_T* win, char* nickname, int type, char* fmt, ...)
 {
+    va_list args;
     pthread_mutex_lock(&_win_lock);
-    append_message(win, nickname, msg, type);
+    va_start(args, fmt);
+    vappend_message(win, nickname, type, fmt, args);
+    va_end(args);
     pthread_mutex_unlock(&_win_lock);
 }
 
@@ -1144,6 +1191,11 @@ read_line(int fd, char** line)
 }
 
 
+/**
+ *  Connects to a unix domain local socket.
+ *  @param local_path Local socket path to connect to
+ *  @return File descriptor or -1 on error
+ */
 int
 unix_connect(char* local_path)
 {
@@ -1169,16 +1221,22 @@ unix_connect(char* local_path)
 }
 
 
+/**
+ *  Initializes the global inter process communication structure, used for this GUI.
+ *  @return 0 on success, -1 otherwise
+ */
 int
 init_ipc()
 {
     memset(&_ipc, 0, sizeof(_ipc));
 
+    // mutex for reconnect
     if (pthread_mutex_init(&_ipc.lock, NULL) != 0)
     {
         return -1;
     }
 
+    // reconnect condition
     if (pthread_cond_init(&_ipc.cond, NULL) != 0)
     {
         return -1;
@@ -1188,6 +1246,9 @@ init_ipc()
 }
 
 
+/**
+ *  Closes all open sockets of the global IPC structure.
+ */
 void
 free_unix_socks()
 {
@@ -1208,6 +1269,9 @@ free_unix_socks()
 }
 
 
+/**
+ *  Frees all ressources and closes all open sockets of the global IPC structure.
+ */
 void
 free_ipc()
 {
@@ -1217,6 +1281,9 @@ free_ipc()
 }
 
 
+/**
+ *  Signals the IPC thread to reconnect to the UI unix sockets.
+ */
 void
 signal_reconnect()
 {
@@ -1227,6 +1294,11 @@ signal_reconnect()
 }
 
 
+/**
+ *  Thread function that handles incoming data from the input UI socket.
+ *  @param ptr Not used
+ *  @return NULL
+ */
 void*
 handle_sock_inp(void* ptr)
 {
@@ -1236,6 +1308,7 @@ handle_sock_inp(void* ptr)
     char* save_ptr; // used for strtok
     char delim = ';';
 
+    // is input socket initialized; no EOF and no error?
     while ( _ipc.inp_sock != 0 && read_line(_ipc.inp_sock, &line) > 0 )
     {
         // split line: line format -> nickname;message
@@ -1250,28 +1323,34 @@ handle_sock_inp(void* ptr)
             continue;
         }
 
-        append_message_sync(_win_msg, nickname, msg, MSGTYPE_CONTACT);
+        append_message_sync(_win_msg, nickname, MSGTYPE_CONTACT, msg);
         free(line);
     }
 
-    append_message_sync(_win_msg, SYSTEM, "Input socket connection lost!",
-                        MSGTYPE_SYSTEM);
+    // on error, eof, not initialized -> reconnect!
+    append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM,
+                        "No connection to input socket: '%s'", strerror(errno));
     signal_reconnect();
     pthread_exit(NULL);
 }
 
 
+/**
+ *  Thread function that handles outgoing data to the output UI socket.
+ *  @param ptr Not used
+ *  @return NULL
+ */
 void*
 handle_sock_out(void* ptr)
 {
     int len;
     len = strlen((char*)ptr);
 
-    if (_ipc.out_sock != 0 && write(_ipc.out_sock, ptr, len) == -1)
+    // on error, eof, not initialized -> reconnect!
+    if (_ipc.out_sock == 0 || write(_ipc.out_sock, ptr, len) == -1)
     {
-        append_message(_win_msg, SYSTEM,
-                       "Output socket connection lost! Message could not be delivered!",
-                       MSGTYPE_SYSTEM);
+        append_message(_win_msg, SYSTEM, MSGTYPE_SYSTEM,
+                       "No connection to output socket: '%s'", strerror(errno));
         signal_reconnect();
     }
 
@@ -1279,65 +1358,79 @@ handle_sock_out(void* ptr)
 }
 
 
+/**
+ *  Thread function that handles incoming data from the logging UI socket.
+ *  @param ptr Not used
+ *  @return NULL
+ */
 void*
 handle_sock_log(void* ptr)
 {
     char* line;
 
+    // is logging socket initialized; no EOF and no error?
     while ( _ipc.log_sock != 0 && read_line(_ipc.log_sock, &line) > 0 )
     {
-        append_message_sync(_win_msg, SYSTEM, line, MSGTYPE_SYSTEM);
+        append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM, line);
         free(line);
     }
 
-    append_message_sync(_win_msg, SYSTEM, "Logging socket connection lost!",
-                        MSGTYPE_SYSTEM);
+    // on error, eof, not initialized -> reconnect!
+    append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM,
+                        "No connection to logging socket: '%s'", strerror(errno));
     signal_reconnect();
     pthread_exit(NULL);
 }
 
 
+/**
+ *  Thread function that handles the connections to the UI unix sockets.
+ *  @param ptr Not used
+ *  @return NULL
+ */
 void*
 th_ipc_connector(void* ptr)
 {
     int ival = 5;
+    int* socks[] =
+    {
+        &_ipc.inp_sock,
+        &_ipc.out_sock,
+        &_ipc.log_sock
+    };
+    char* sock_paths[] =
+    {
+        INP_SOCK_PATH,
+        OUT_SOCK_PATH,
+        LOG_SOCK_PATH
+    };
     pthread_t th_inp, th_out, th_log;
 
+    // initialize global IPC structure
     if (init_ipc() == -1)
     {
-        append_message_sync(_win_msg, SYSTEM, "Inter-Process-Communication failed!",
-                            MSGTYPE_SYSTEM);
+        append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM,
+                            "Inter-Process-Communication failed!\n%sReason: '%s'", strerror(errno));
     }
 
     while (1)
     {
-        if ((_ipc.inp_sock = unix_connect(INP_SOCK_PATH)) == -1)
+        // connect to all UI sockets
+        for (int i = 0; i < sizeof(socks)/sizeof(int*) ; i++)
         {
-            append_message_sync(_win_msg, SYSTEM, "Connection to input socket failed!",
-                                MSGTYPE_SYSTEM);
-            free_unix_socks();
-            sleep(ival);
-            continue;
-        }
-        else if ((_ipc.out_sock = unix_connect(OUT_SOCK_PATH)) == -1)
-        {
-            append_message_sync(_win_msg, SYSTEM, "Connection to output socket failed!",
-                                MSGTYPE_SYSTEM);
-            free_unix_socks();
-            sleep(ival);
-            continue;
-        }
-        else if ((_ipc.log_sock = unix_connect(LOG_SOCK_PATH)) == -1)
-        {
-            append_message_sync(_win_msg, SYSTEM, "Connection to logging socket failed!",
-                                MSGTYPE_SYSTEM);
-            free_unix_socks();
-            sleep(ival);
-            continue;
+            if ((*socks[i] = unix_connect(sock_paths[i])) == -1)
+            {
+                append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM,
+                                    "Connection to '%s' failed!\nReason: '%s'", sock_paths[i], strerror(errno));
+                free_unix_socks();
+                sleep(ival);
+                i = -1;
+                continue;
+            }
         }
 
-        append_message_sync(_win_msg, SYSTEM, "Connection established!",
-                            MSGTYPE_SYSTEM);
+        append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM,
+                            "Connection established!");
         // start all socket threads
         pthread_create(&th_inp, NULL, (void*) handle_sock_inp, NULL);
         pthread_create(&th_log, NULL, (void*) handle_sock_log, NULL);
@@ -1351,7 +1444,7 @@ th_ipc_connector(void* ptr)
         }
 
         pthread_mutex_unlock(&_ipc.lock);
-        append_message_sync(_win_msg, SYSTEM, "Reconnecting...", MSGTYPE_SYSTEM);
+        append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM, "Reconnecting...");
         // wait for threads to finish
         free_unix_socks();  // close all open sockets
         pthread_join(th_inp, NULL);

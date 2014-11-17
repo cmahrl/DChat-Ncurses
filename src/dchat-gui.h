@@ -172,8 +172,11 @@ int print_line_contact(DWINDOW_T* win, char* nickname, char* msg);
 int print_line_system(DWINDOW_T* win, char* nickname, char* msg);
 int print_line(DWINDOW_T* win, char* nickname, chtype nickname_attr,  char* msg,
                chtype msg_attr);
-void append_message(DWINDOW_T* win, char* nickname, char* msg, int type);
-void append_message_sync(DWINDOW_T* win, char* nickname, char* msg, int type);
+void vappend_message(DWINDOW_T* win, char* nickname, int type, char* fmt,
+                     va_list args);
+void append_message(DWINDOW_T* win, char* nickname, int type, char* fmt, ...);
+void append_message_sync(DWINDOW_T* win, char* nickname, int type, char* fmt,
+                         ...);
 
 
 #endif
