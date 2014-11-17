@@ -1,3 +1,36 @@
+2014-11-17  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Code Cleanup: Moved IPC prototypes
+	moved IPC prototypes to dchat-gui.h
+
+	Bugfix: Page scrolling
+	Pages were not scrolled correctly
+
+2014-11-17  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Code Cleanup: Using format strings
+	append_message functions now use format string and variable arguments
+
+	Added documentation and comments for new functions
+
+	Update TODO
+
+2014-11-17  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Remove duplicated directory
+
+2014-11-16  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Added: IPC Support
+	Added support for inter process communication for incoming and outgoing
+	text messages as well as logging messages via UNIX domain sockets
+
+2014-11-13  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: TODO
+
+	Update: ChangeLog
+
 2014-11-13  Christoph Mahrl  <is121018@fhstp.ac.at>
 
 	Update: Code Cleanup
