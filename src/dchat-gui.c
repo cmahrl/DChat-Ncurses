@@ -785,7 +785,7 @@ on_page_up()
     if (current_winnr() == WINDOW_MSG)
     {
         // scroll window up 1 page
-        scroll_win(_win_msg, _win_msg->h);
+        scroll_win(_win_msg, _win_msg->h + 1);
     }
 }
 
@@ -813,7 +813,7 @@ on_page_down()
     if (current_winnr() == WINDOW_MSG)
     {
         // move window down 1 page
-        scroll_win(_win_msg, _win_msg->h * -1);
+        scroll_win(_win_msg, _win_msg->h * -1 - 1);
     }
 }
 
@@ -1444,11 +1444,11 @@ th_ipc_connector(void* ptr)
         }
 
         pthread_mutex_unlock(&_ipc.lock);
-        append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM, "Reconnecting...");
         // wait for threads to finish
         free_unix_socks();  // close all open sockets
         pthread_join(th_inp, NULL);
         pthread_join(th_log, NULL);
+        append_message_sync(_win_msg, SYSTEM, MSGTYPE_SYSTEM, "Reconnecting...");
         _ipc.reconnect = 0; // reset reconnect condition
     }
 
