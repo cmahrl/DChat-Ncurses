@@ -37,57 +37,6 @@
 #include "dchat-gui.h"
 
 
-#define INP_SOCK_PATH "/tmp/dinp.sock"
-#define OUT_SOCK_PATH "/tmp/dout.sock"
-#define LOG_SOCK_PATH "/tmp/dlog.sock"
-
-
-typedef struct ipc
-{
-    char* inp_sock_path;  //!< Path to UI input unix socket
-    char* out_sock_path;  //!< Path to UI output unix socket
-    char* log_sock_path;  //!< Path to UI logging unix socket
-    int   inp_sock;       //!< File descriptor of input unix socket
-    int   out_sock;       //!< File descriptor of output unix socket
-    int   log_sock;       //!< File descriptor of logging unix socket
-    pthread_mutex_t lock; //!< Mutex for reconnecting the ipc thread
-    pthread_cond_t cond;  //!< Condition for reconnect
-    int reconnect;        //!< Value of reconnect condition: 1 = reconnect
-} ipc;
-
-
-int
-unix_connect(char* local_path);
-
-
-int
-init_ipc();
-
-
-void
-free_ipc();
-
-
-void
-signal_reconnect();
-
-
-void*
-handle_sock_inp(void* ptr);
-
-
-void*
-handle_sock_out(void* ptr);
-
-
-void*
-handle_sock_log(void* ptr);
-
-
-void*
-th_ipc_connector(void* ptr);
-
-
 //*********************************
 //        GLOBAL VARIABLES
 //*********************************
