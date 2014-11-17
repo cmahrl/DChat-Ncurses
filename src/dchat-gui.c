@@ -734,7 +734,7 @@ on_page_up()
     if (current_winnr() == WINDOW_MSG)
     {
         // scroll window up 1 page
-        scroll_win(_win_msg, _win_msg->h + 1);
+        scroll_win(_win_msg, _win_msg->h);
     }
 }
 
@@ -762,7 +762,7 @@ on_page_down()
     if (current_winnr() == WINDOW_MSG)
     {
         // move window down 1 page
-        scroll_win(_win_msg, _win_msg->h * -1 - 1);
+        scroll_win(_win_msg, _win_msg->h * -1);
     }
 }
 
