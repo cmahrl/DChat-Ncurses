@@ -409,8 +409,10 @@ get_win(int winnr)
 void
 resize_win(int signum)
 {
+    pthread_mutex_lock(&_win_lock);
     stop_gui();
     start_gui();
+    pthread_mutex_unlock(&_win_lock);
 }
 
 
@@ -1083,7 +1085,8 @@ append_message_sync(DWINDOW_T* win, char* nickname, int type, char* fmt, ...)
     va_list args;
     pthread_mutex_lock(&_win_lock);
     va_start(args, fmt);
-    vappend_message(win, nickname, type, fmt, args);
+    // FIXME: use win instead -> but on resize_win -> segfault
+    vappend_message(_win_msg, nickname, type, fmt, args);
     va_end(args);
     pthread_mutex_unlock(&_win_lock);
 }
