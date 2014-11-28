@@ -48,6 +48,7 @@ static DWINDOW_T*
 _win_cur;       //!< pointer that holds the current selected window
 static ipc
 _ipc;           //!< holds file descriptor information to communicate with another process via ipc
+static char* _nickname = SELF; // !< default nickname
 
 
 int
@@ -682,7 +683,7 @@ on_key_enter()
     input[_win_inp->x_count]     = '\n'; // append newline
     input[_win_inp->x_count + 1] = '\0';
     // print value to message window
-    append_message(_win_msg, SELF, MSGTYPE_SELF, input);
+    append_message(_win_msg, _nickname, MSGTYPE_SELF, input);
     handle_sock_out(input); // write input to process via ipc
     free(input);
     // reset column cursor
@@ -1259,6 +1260,7 @@ handle_sock_inp(void* ptr)
     char* msg;
     char* save_ptr; // used for strtok
     char delim = ';';
+    int has_nick = 0;
 
     // is input socket initialized; no EOF and no error?
     while ( _ipc.inp_sock != 0 && read_line(_ipc.inp_sock, &line) > 0 )
@@ -1275,7 +1277,22 @@ handle_sock_inp(void* ptr)
             continue;
         }
 
-        append_message_sync(_win_msg, nickname, MSGTYPE_CONTACT, msg);
+        // first message contains a message form the dchat core which
+        // defines what nickname should be used
+        if(!has_nick)
+        {
+            pthread_mutex_lock(&_win_lock);
+            if((_nickname = malloc(strlen(nickname) + 1)) != NULL)
+            {
+                _nickname[0] = '\0';
+                strcat(_nickname, nickname); 
+            }
+            has_nick = 1;
+            pthread_mutex_unlock(&_win_lock);
+        }
+        else
+            append_message_sync(_win_msg, nickname, MSGTYPE_CONTACT, msg);
+
         free(line);
     }
 
