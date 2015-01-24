@@ -229,7 +229,7 @@ AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
-CFLAGS = --pedantic -Wall -std=c99
+CFLAGS = --pedantic -Wall
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CURSES_LIB = @CURSES_LIB@
