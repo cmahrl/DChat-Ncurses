@@ -87,7 +87,6 @@ init_colors(void)
     if (has_colors())
     {
         start_color();
-        use_default_colors();
         init_pair(COLOR_WINDOW_MESSAGE,   COLOR_WHITE,   COLOR_BLACK);
         init_pair(COLOR_WINDOW_USER,      COLOR_WHITE,   COLOR_BLACK);
         init_pair(COLOR_WINDOW_INPUT,     COLOR_WHITE,   COLOR_BLACK);
@@ -99,7 +98,7 @@ init_colors(void)
         init_pair(COLOR_MESSAGE_SELF,     COLOR_WHITE,   COLOR_BLACK);
         init_pair(COLOR_MESSAGE_CONTACT,  COLOR_WHITE,   COLOR_BLACK);
         init_pair(COLOR_MESSAGE_SYSTEM,   COLOR_RED,     COLOR_BLACK);
-        init_pair(COLOR_STDSCR,           -1,            COLOR_YELLOW);
+        init_pair(COLOR_STDSCR,           COLOR_BLACK,   COLOR_YELLOW);
     }
 }
 

@@ -237,7 +237,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-dchat_gui_SOURCES = dchat-gui.c 
+dchat_gui_SOURCES = dchat-gui.c dchat-gui.h
 dchat_gui_LDADD = @CURSES_LIB@
 all: all-am
 
