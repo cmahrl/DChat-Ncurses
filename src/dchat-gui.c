@@ -1264,8 +1264,8 @@ handle_sock_inp(void* ptr)
     // is input socket initialized; no EOF and no error?
     while ( _ipc.inp_sock != 0 && read_line(_ipc.inp_sock, &line) > 0 )
     {
-	mvprintw(0,0, "Line: '%s'", line);
-	refresh_screen();
+        mvprintw(0,0, "Line: '%s'", line);
+        refresh_screen();
 
         // split line: line format -> nickname;message
         if ((nickname = strtok_r(line, &delim, &save_ptr)) == NULL)
@@ -1273,19 +1273,23 @@ handle_sock_inp(void* ptr)
             free(line);
             continue;
         }
-	msg = save_ptr;
+
+        msg = save_ptr;
+
         if (msg == NULL)
         {
             // first message contains a message form the dchat core which
             // defines what nickname should be used
-            if(!has_nick)
+            if (!has_nick)
             {
                 pthread_mutex_lock(&_win_lock);
-                if((_nickname = malloc(strlen(nickname) + 1)) != NULL)
+
+                if ((_nickname = malloc(strlen(nickname) + 1)) != NULL)
                 {
                     _nickname[0] = '\0';
-                    strcat(_nickname, nickname); 
+                    strcat(_nickname, nickname);
                 }
+
                 has_nick = 1;
                 pthread_mutex_unlock(&_win_lock);
             }
@@ -1293,9 +1297,8 @@ handle_sock_inp(void* ptr)
             free(line);
             continue;
         }
-	
-        append_message_sync(_win_msg, nickname, MSGTYPE_CONTACT, msg);
 
+        append_message_sync(_win_msg, nickname, MSGTYPE_CONTACT, msg);
         free(line);
     }
 
