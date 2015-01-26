@@ -1,4 +1,50 @@
+2015-01-26  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: Autotools config files
+	-) Added check for pthread
+	-) Added check for ncurses
+
+2015-01-25  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Bugfix: use_default_colors();
+	-) use_default_colors() caused black screen in cygwin environment, even
+	after refresh() has been called
+
+	-) Update Makefile.am: added dchat-gui.h
+
+2015-01-24  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: configure.ac
+	Added c99 check
+
+2014-11-28  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: UI Handling
+	The first line sent by dchat core is in the form <nickname>;
+
+	Update: UI Handling
+	First line of dchat core contains the nickname to use
+
+2014-11-24  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Hotfix: Segfault on Error
+	Applied hotfix that prevents segfaults on window resize events
+
 2014-11-17  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Bugfix: Scrolling Pages
+	Reverted previous page scrolling update
+
+	Update: configure.ac
+	Added AC_DEFINES for UI unix socket paths
+
+2014-11-17  Christoph  <is121018@users.noreply.github.com>
+
+	Delete config.status
+
+2014-11-17  Christoph Mahrl  <is121018@fhstp.ac.at>
+
+	Update: ChangeLog
 
 	Code Cleanup: Moved IPC prototypes
 	moved IPC prototypes to dchat-gui.h
