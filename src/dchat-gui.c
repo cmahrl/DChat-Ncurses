@@ -1264,8 +1264,6 @@ handle_sock_inp(void* ptr)
     // is input socket initialized; no EOF and no error?
     while ( _ipc.inp_sock != 0 && read_line(_ipc.inp_sock, &line) > 0 )
     {
-        mvprintw(0,0, "Line: '%s'", line);
-        refresh_screen();
 
         // split line: line format -> nickname;message
         if ((nickname = strtok_r(line, &delim, &save_ptr)) == NULL)
@@ -1276,7 +1274,7 @@ handle_sock_inp(void* ptr)
 
         msg = save_ptr;
 
-        if (msg == NULL)
+        if (msg == '\0')
         {
             // first message contains a message form the dchat core which
             // defines what nickname should be used
