@@ -30,9 +30,13 @@ AC_PROG_CC_STDC
 
 # Checks for libraries.
 AX_WITH_CURSES
+if test "x$ax_cv_ncurses" != xyes || test "x$ax_cv_curses_color" != xyes; then
+     AC_MSG_ERROR([requires Ncurses library with color support])
+fi
+AX_PTHREAD([LIBS+="$PTHREAD_CFLAGS $PTHREAD_LIBS"])
 
 # Checks for header files.
-AC_CHECK_HEADERS([stdlib.h string.h])
+AC_CHECK_HEADERS([stdlib.h string.h ncurses.h])
 
 # Checks for library functions.
 AC_FUNC_MALLOC

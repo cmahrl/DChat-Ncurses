@@ -44,8 +44,11 @@
 /* Define to 1 if <ncurses/curses.h> is present */
 /* #undef HAVE_NCURSES_CURSES_H */
 
-/* Define to 1 if <ncurses.h> is present */
+/* Define to 1 if you have the <ncurses.h> header file. */
 #define HAVE_NCURSES_H 1
+
+/* Have PTHREAD_PRIO_INHERIT. */
+#define HAVE_PTHREAD_PRIO_INHERIT 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -97,6 +100,10 @@
 
 /* Define to the version of this package. */
 #define PACKAGE_VERSION "0.9"
+
+/* Define to necessary symbol if this constant uses a non-standard name on
+   your system. */
+/* #undef PTHREAD_CREATE_JOINABLE */
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
