@@ -1273,8 +1273,7 @@ handle_sock_inp(void* ptr)
         }
 
         msg = save_ptr;
-
-        if (msg == '\0')
+        if (*msg == '\0')
         {
             // first message contains a message form the dchat core which
             // defines what nickname should be used
