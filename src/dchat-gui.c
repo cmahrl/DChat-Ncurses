@@ -1273,23 +1273,20 @@ handle_sock_inp(void* ptr)
         }
 
         msg = save_ptr;
-        if (*msg == '\0')
+        // first message contains a message form the dchat core which
+        // defines what nickname should be used
+        if (*msg == '\0' && !has_nick)
         {
-            // first message contains a message form the dchat core which
-            // defines what nickname should be used
-            if (!has_nick)
+            pthread_mutex_lock(&_win_lock);
+
+            if ((_nickname = malloc(strlen(nickname) + 1)) != NULL)
             {
-                pthread_mutex_lock(&_win_lock);
-
-                if ((_nickname = malloc(strlen(nickname) + 1)) != NULL)
-                {
-                    _nickname[0] = '\0';
-                    strcat(_nickname, nickname);
-                }
-
-                has_nick = 1;
-                pthread_mutex_unlock(&_win_lock);
+                _nickname[0] = '\0';
+                strcat(_nickname, nickname);
             }
+
+            has_nick = 1;
+            pthread_mutex_unlock(&_win_lock);
 
             free(line);
             continue;
